@@ -1,0 +1,26 @@
+[
+	{
+		"Name": "Triangle Rock Club - Morrisville",
+		"ShortName": "MV",
+		"Address": "102 Pheasant Wood Ct, Morrisville, NC 27560",
+		"CalendarUrl": "https://app.rockgympro.com/ical/public/ddfa32c028e24859a68ef61cecda5ed9"
+	},
+	{
+		"Name": "Triangle Rock Club - Salvage Yard",
+		"ShortName": "SY",
+		"Address": "2330 Salvage Yard Dr, Raleigh, NC 27604",
+		"CalendarUrl": "https://app.rockgympro.com/ical/public/9c2215701f70418ea1ab25009b361e50"
+	},
+	{
+		"Name": "Triangle Rock Club - North Raleigh",
+		"ShortName": "NR",
+		"Address": "6022 Duraleigh Rd, Raleigh, NC 27612",
+		"CalendarUrl": "https://app.rockgympro.com/ical/public/7905f67632b8482b9d15bfd1b7beef09"
+	},
+	{
+		"Name": "Triangle Rock Club - Durham",
+		"ShortName": "D",
+		"Address": "1010 Martin Luther King Jr Pkwy Suite 400, Durham, NC 27713",
+		"CalendarUrl": "https://app.rockgympro.com/ical/public/47ed069d575c4005aa50ab205c49c1be"
+	}
+]

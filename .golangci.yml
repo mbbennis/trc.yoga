@@ -1,0 +1,15 @@
+linters-settings:
+  enable-all: true
+  disable:
+    - wrapcheck
+    - prealloc
+    - noctx
+    - makezero
+    - gochecknoinits
+    - gochecknoglobals
+    - exhaustruct
+    - depguard
+    - tenv
+
+run:
+  timeout: 5m
