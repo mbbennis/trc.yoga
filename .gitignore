@@ -1,4 +1,4 @@
-bootstrap/
+bootstrap
 lambda.zip
 terraform.tfstate
 terraform.tfstate.backup
