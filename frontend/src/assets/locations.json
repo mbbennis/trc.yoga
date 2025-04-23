@@ -1,0 +1,38 @@
+[
+	{
+		"name": "Triangle Rock Club - Morrisville",
+		"mediumName": "Morrisville",
+		"shortName": "MV",
+		"address": "102 Pheasant Wood Ct, Morrisville, NC 27560",
+		"iCalendarUrl": "https://app.rockgympro.com/ical/public/ddfa32c028e24859a68ef61cecda5ed9",
+		"calendarUrl": "https://trianglerockclub.com/morrisville/calendar/fitness-yoga/",
+		"color": "blue"
+	},
+	{
+		"name": "Triangle Rock Club - Salvage Yard",
+		"mediumName": "Salvage Yard",
+		"shortName": "SY",
+		"address": "2330 Salvage Yard Dr, Raleigh, NC 27604",
+		"iCalendarUrl": "https://app.rockgympro.com/ical/public/9c2215701f70418ea1ab25009b361e50",
+		"calendarUrl": "https://trianglerockclub.com/salvage-yard/calendar/fitness-yoga/",
+		"color": "red"
+	},
+	{
+		"name": "Triangle Rock Club - North Raleigh",
+		"mediumName": "North Raleigh",
+		"shortName": "NR",
+		"address": "6022 Duraleigh Rd, Raleigh, NC 27612",
+		"iCalendarUrl": "https://app.rockgympro.com/ical/public/7905f67632b8482b9d15bfd1b7beef09",
+		"calendarUrl": "https://trianglerockclub.com/raleigh/calendar/fitness-yoga/",
+		"color": "yellow"
+	},
+	{
+		"name": "Triangle Rock Club - Durham",
+		"mediumName": "Durham",
+		"shortName": "D",
+		"address": "1010 Martin Luther King Jr Pkwy Suite 400, Durham, NC 27713",
+		"iCalendarUrl": "https://app.rockgympro.com/ical/public/47ed069d575c4005aa50ab205c49c1be",
+		"calendarUrl": "https://trianglerockclub.com/durham/calendar/fitness-yoga/",
+		"color": "green"
+	}
+]
