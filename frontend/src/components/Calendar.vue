@@ -1,15 +1,15 @@
 <script setup>
-import { ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import {
     createCalendar,
     createViewDay,
     createViewWeek,
 } from '@schedule-x/calendar';
 import { createEventsServicePlugin } from '@schedule-x/events-service';
-import { createEventModalPlugin } from '@schedule-x/event-modal';
 import { ScheduleXCalendar } from '@schedule-x/vue';
 import '@schedule-x/theme-default/dist/index.css';
 import EventDetails from "@/components/EventDetails.vue"
+import { fetchCalendarEvents } from '@/services/EventService';
 
 const colors = {
     NR: {
@@ -67,21 +67,30 @@ const colors = {
 };
 
 const props = defineProps({
-    events: {
+    locations: {
         type: Array,
         required: true,
     }
 });
+
+const events = ref([]);
+const selectedEventDetails = ref();
 const eventsServicePlugin = createEventsServicePlugin();
-// const eventModal = createEventModalPlugin();
 
-const eventDetailsRef = ref(null);
+onMounted(async () => {
+    events.value = await fetchCalendarEvents();
+})
 
-const onEventClick = (calendarEvent) => {
-    console.log('matt was here');
-    console.log(calendarEvent);
-    eventDetailsRef.value.showEvent(calendarEvent);
-}
+const filteredEvents = computed(() => {
+    const addresses = props.locations.map(l => l.address);
+    return events.value.filter(event => {
+        return addresses.includes(event.location);
+    });
+});
+
+watch(filteredEvents, (newEvents) => {
+    eventsServicePlugin.set(newEvents);
+});
 
 const calendar = createCalendar(
     { 
@@ -93,21 +102,17 @@ const calendar = createCalendar(
             end: '21:00',
         },
         callbacks: {
-            onEventClick: onEventClick,
+            onEventClick: (event) => selectedEventDetails.value.showEvent(event),
         },
     },
-    // [eventsServicePlugin, eventModal],
     [eventsServicePlugin],
 );
-
-watch(() => props.events, (newEvents, _) => eventsServicePlugin.set(newEvents));
-
 </script>
 <template>
     <div class="calendar-container">
         <ScheduleXCalendar :calendar-app="calendar" />
-        <i>Calendar will not reflect last minute cancellations.</i>
-        <EventDetails ref="eventDetailsRef"></EventDetails>
+        <i>Calendar won't reflect last minute cancellations.</i>
+        <EventDetails ref="selectedEventDetails"></EventDetails>
     </div>
 </template>
 <style>

@@ -2,6 +2,7 @@ import locations from '@/assets/locations.json';
 import { CalendarEvent } from '@/types/CalendarEvent';
 import * as ICS from 'ical.js';
 
+const fullICalPath = '/calendars/D_MV_NR_SY.ical';
 const locationMap: Map<string, any> = new Map(locations.map(l => [l.address, l]));
 const dateFormatter = new Intl.DateTimeFormat('en-CA', {
     year: 'numeric',
@@ -36,6 +37,9 @@ export function cleanDescription(description: string): string {
     description = description.replace('\,', ',');
     description = description.replace(/&amp;nbsp;/g, '\u00A0');
     description = description.replace(/&amp;rsquo;/g, '\'');
+    description = description.replace(/&amp;#39;/g, '\'');
+    description = description.replace(/&amp;rdquo;/g, '"');
+    description = description.replace(/&amp;ldquo;/g, '"');
     description = trimLastSentances(description, 2);
     return description;
 }
@@ -61,15 +65,15 @@ function toCalendarEvent(event: ICS.Event, id: number): CalendarEvent {
     };
 }
 
-export async function fetchCalendarEvents(url: string): Promise<CalendarEvent[]> {
-  let id = 0;
+export async function fetchCalendarEvents(): Promise<CalendarEvent[]> {
   try {
-    const response = await fetch(url);
+    const response = await fetch(fullICalPath);
     const icalData = await response.text();
     const parsedCalendar = ICS.parse(icalData);
     const component = new ICS.Component(parsedCalendar);
     const vevents = component.getAllSubcomponents('vevent');
 
+    let id = 0;
     const calendarEvents = vevents.map((vevent) => {
       const e = new ICS.Event(vevent);
       return toCalendarEvent(e, id++);

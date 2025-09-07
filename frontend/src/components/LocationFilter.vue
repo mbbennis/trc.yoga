@@ -20,7 +20,7 @@ watch(selection, (newSelection) => {
         <div class="locations">
             <h3>Select locations</h3>
             <div class="d-flex justify-center">
-                <v-chip-group v-model="selection" column multiple>
+                <v-chip-group class="chip-group" v-model="selection" column multiple>
                     <v-chip v-for="location in locations" variant="outlined" :color="location.color" filter>
                         {{ location.mediumName }}
                     </v-chip>
@@ -39,9 +39,10 @@ h3 {
     padding-top: 10px;
 }
 
-.location v-chip-group {
-    position: relative;
-    justify-content: center;
+@media (max-width: 512px) {
+    .chip-group {
+        margin-left: 15%;
+    }
 }
 
 @media (min-width: 1024px) {

@@ -15,4 +15,12 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url))
     },
   },
+  server: {
+    proxy: {
+      '/calendars': {
+        target: 'https://www.trc.yoga',
+        changeOrigin: true
+      }
+    }
+  }
 })

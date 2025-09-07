@@ -10,8 +10,11 @@ import 'vuetify/styles'
 import App from './App.vue'
 
 const vuetify = createVuetify({
+    theme: {
+        defaultTheme: 'dark'
+    },
     icons: {
-        defaultSet: "mdi",
+        defaultSet: 'mdi',
         aliases,
         sets: {
             mdi,
