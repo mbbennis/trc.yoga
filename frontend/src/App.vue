@@ -10,11 +10,13 @@ const filteredLocations = ref([]);
 <template>
     <header>
         <img alt="Tree yoga pose" class="logo" src="./assets/yoga.svg" width="125" height="125" />
-        <div class="wrapper">
+        <div class="header-content">
             <h1 class="green">TRC Yoga</h1>
-            <h3>See all of the yoga schedules in one place.</h3>
-            <LocationFilter :locations=locations @update-filter="val => filteredLocations = val" />
-            <CopyCalendarLink :locations=filteredLocations />
+            <p>See all of the yoga schedules.</p>
+            <div class="select-wrapper">
+                <LocationFilter :locations=locations @updateFilter="val => filteredLocations = val" />
+                <CopyCalendarLink :locations=filteredLocations />
+            </div>
         </div>
     </header>
     <main>
@@ -24,6 +26,7 @@ const filteredLocations = ref([]);
 <style scoped>
 header {
     line-height: 1.5;
+    padding-bottom: 1rem;
 }
 
 h1 {
@@ -34,14 +37,17 @@ h1 {
     text-align: center;
 }
 
-h3 {
-    font-size: 1.2rem;
+p {
     text-align: center;
 }
 
 .logo {
     display: block;
     margin: 0 auto 2rem;
+}
+
+.select-wrapper {
+    margin-top: 1rem;
 }
 
 @media (min-width: 1024px) {
@@ -59,7 +65,7 @@ h3 {
         margin: 0 2rem 0 0;
     }
 
-    .wrapper {
+    .header-content {
         display: flex;
         place-items: flex-start;
         flex-wrap: wrap;

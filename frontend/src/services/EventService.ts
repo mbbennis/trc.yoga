@@ -1,6 +1,6 @@
 import locations from '@/assets/locations.json';
 import { CalendarEvent } from '@/types/CalendarEvent';
-import * as ICS from 'ical.js';
+import ICS from 'ical.js';
 
 const fullICalPath = '/calendars/D_MV_NR_SY.ical';
 const locationMap: Map<string, any> = new Map(locations.map(l => [l.address, l]));
