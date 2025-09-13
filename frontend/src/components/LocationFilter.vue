@@ -6,20 +6,26 @@ const props = defineProps({
         type: Array,
         required: true,
     },
-})
-const emit = defineEmits(["updateFilter"]);
+});
+const emit = defineEmits(['updateFilter']);
 const selection = shallowRef([]);
 
 watch(selection, (newSelection) => {
-    const selectedLocations = newSelection.map(idx => props.locations[idx]);
-    emit("updateFilter", selectedLocations)
+    const selectedLocations = newSelection.map((idx) => props.locations[idx]);
+    emit('updateFilter', selectedLocations);
 });
 </script>
 <template>
     <h3>Select locations</h3>
     <div class="d-flex justify-center">
-        <v-chip-group class="chip-group" v-model="selection" column multiple>
-            <v-chip v-for="location in locations" variant="outlined" :color="location.color" filter>
+        <v-chip-group v-model="selection" class="chip-group" column multiple>
+            <v-chip
+                v-for="location in locations"
+                :key="location.name"
+                :color="location.color"
+                variant="outlined"
+                filter
+            >
                 {{ location.mediumName }}
             </v-chip>
         </v-chip-group>

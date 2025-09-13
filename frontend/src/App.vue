@@ -1,26 +1,36 @@
 <script setup>
-import { ref } from "vue";
-import locations from "@/assets/locations.json";
-import Calendar from "@/components/Calendar.vue"
-import CopyCalendarLink from "@/components/CopyCalendarLink.vue";
-import LocationFilter from "@/components/LocationFilter.vue"
+import { ref } from 'vue';
+
+import locations from '@/assets/locations.json';
+import CopyCalendarLink from '@/components/CopyCalendarLink.vue';
+import EventCalendar from '@/components/EventCalendar.vue';
+import LocationFilter from '@/components/LocationFilter.vue';
 
 const filteredLocations = ref([]);
 </script>
 <template>
     <header>
-        <img alt="Tree yoga pose" class="logo" src="./assets/yoga.svg" width="125" height="125" />
+        <img
+            alt="Tree yoga pose"
+            class="logo"
+            src="./assets/yoga.svg"
+            width="125"
+            height="125"
+        />
         <div class="header-content">
             <h1 class="green">TRC Yoga</h1>
             <p>See all of the yoga schedules.</p>
             <div class="select-wrapper">
-                <LocationFilter :locations=locations @updateFilter="val => filteredLocations = val" />
-                <CopyCalendarLink :locations=filteredLocations />
+                <LocationFilter
+                    :locations="locations"
+                    @update-filter="(val) => (filteredLocations = val)"
+                />
+                <CopyCalendarLink :locations="filteredLocations" />
             </div>
         </div>
     </header>
     <main>
-        <Calendar :locations=filteredLocations />
+        <EventCalendar :locations="filteredLocations" />
     </main>
 </template>
 <style scoped>
@@ -57,7 +67,8 @@ p {
         padding-right: calc(var(--section-gap) / 2);
     }
 
-    h1, h3 {
+    h1,
+    h3 {
         text-align: left;
     }
 

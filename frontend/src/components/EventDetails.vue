@@ -10,19 +10,19 @@ const showEvent = (event) => {
 };
 
 function formatTime() {
-    const start = new Date(eventData.value.start.replace(" ", "T"));
-    const end = new Date(eventData.value.end.replace(" ", "T"));
+    const start = new Date(eventData.value.start.replace(' ', 'T'));
+    const end = new Date(eventData.value.end.replace(' ', 'T'));
 
     const dateFormatter = new Intl.DateTimeFormat('en-US', {
         month: 'long',
         day: 'numeric',
-        year: 'numeric'
+        year: 'numeric',
     });
 
     const timeFormatter = new Intl.DateTimeFormat('en-US', {
         hour: 'numeric',
         minute: '2-digit',
-        hour12: true
+        hour12: true,
     });
 
     return `${dateFormatter.format(start)} • ${timeFormatter.format(start)} - ${timeFormatter.format(end)}`;
@@ -39,26 +39,36 @@ defineExpose({ showEvent });
             </v-card-item>
             <v-card-text>
                 <div class="event-detail">
-                    <v-icon class="mr-2" color="primary">mdi-clock-outline</v-icon>
+                    <v-icon class="mr-2" color="primary">
+                        mdi-clock-outline
+                    </v-icon>
                     <span>{{ formatTime() }}</span>
                 </div>
                 <div class="event-detail">
-                    <v-icon class="mr-2" color="primary">mdi-map-marker-outline</v-icon>
+                    <v-icon class="mr-2" color="primary">
+                        mdi-map-marker-outline
+                    </v-icon>
                     <span>{{ eventData.location }}</span>
                 </div>
                 <div class="event-detail">
-                    <v-icon class="mr-2" color="primary">mdi-account-outline</v-icon>
+                    <v-icon class="mr-2" color="primary">
+                        mdi-account-outline
+                    </v-icon>
                     <span>{{ eventData.person }}</span>
                 </div>
                 <div class="event-detail">
-                    <v-icon class="mr-2" color="primary">mdi-card-text-outline</v-icon>
-                    <span >{{ eventData.description }}</span>
+                    <v-icon class="mr-2" color="primary">
+                        mdi-card-text-outline
+                    </v-icon>
+                    <span>{{ eventData.description }}</span>
                 </div>
             </v-card-text>
             <v-card-actions>
                 <v-spacer />
-                <v-btn text :href="eventData.calendarUrl" target="_blank">Register</v-btn>
-                <v-btn text @click="dialog = false">Close</v-btn>
+                <v-btn text :href="eventData.calendarUrl" target="_blank">
+                    Register
+                </v-btn>
+                <v-btn text @click="dialog = false"> Close </v-btn>
             </v-card-actions>
         </v-card>
     </v-dialog>
