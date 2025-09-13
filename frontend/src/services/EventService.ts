@@ -3,7 +3,7 @@ import ICS from 'ical.js';
 import locations from '@/assets/locations.json';
 import { CalendarEvent } from '@/types/CalendarEvent';
 
-const fullICalPath = '/calendars/D_MV_NR_SY.ical';
+const historyICalPath = '/calendars/history.ical';
 const locationMap: Map<string, object> = new Map(
     locations.map((l) => [l.address, l]),
 );
@@ -70,7 +70,7 @@ function toCalendarEvent(event: ICS.Event, id: number): CalendarEvent {
 
 export async function fetchCalendarEvents(): Promise<CalendarEvent[]> {
     try {
-        const response = await fetch(fullICalPath);
+        const response = await fetch(historyICalPath);
         const icalData = await response.text();
         const parsedCalendar = ICS.parse(icalData);
         const component = new ICS.Component(parsedCalendar);
