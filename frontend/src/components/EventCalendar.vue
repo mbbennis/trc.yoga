@@ -1,27 +1,29 @@
-<script setup>
+<script setup lang="ts">
 import '@schedule-x/theme-default/dist/index.css';
 
 import {
+    CalendarEvent,
     createCalendar,
     createViewDay,
     createViewWeek,
 } from '@schedule-x/calendar';
 import { createEventsServicePlugin } from '@schedule-x/events-service';
 import { ScheduleXCalendar } from '@schedule-x/vue';
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, PropType, ref, watch } from 'vue';
 
 import colors from '@/assets/calendar-colors.json';
 import EventDetails from '@/components/EventDetails.vue';
 import { fetchCalendarEvents } from '@/services/EventService';
+import { Location } from '@/types/Location';
 
 const props = defineProps({
     locations: {
-        type: Array,
+        type: Array as PropType<Location[]>,
         required: true,
     },
 });
 
-const events = ref([]);
+const events = ref<CalendarEvent[]>([]);
 const selectedEventDetails = ref();
 const eventsServicePlugin = createEventsServicePlugin();
 
@@ -32,7 +34,7 @@ onMounted(async () => {
 const filteredEvents = computed(() => {
     const addresses = props.locations.map((l) => l.address);
     return events.value.filter((event) => {
-        return addresses.includes(event.location);
+        return event.location && addresses.includes(event.location);
     });
 });
 

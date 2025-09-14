@@ -1,11 +1,12 @@
-<script setup>
-import { computed } from 'vue';
+<script setup lang="ts">
+import { computed, PropType } from 'vue';
 
-import { getICalendarUrl } from '@/services/EventService.js';
+import { Location } from '@/types/Location';
+import { getICalendarUrl } from '@/utils/get-icalendar-url';
 
 const props = defineProps({
     locations: {
-        type: Array,
+        type: Array as PropType<Location[]>,
         required: true,
     },
 });

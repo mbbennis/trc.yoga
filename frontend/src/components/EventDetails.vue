@@ -1,15 +1,19 @@
-<script setup>
+<script setup lang="ts">
 import { ref } from 'vue';
 
-const dialog = ref(false);
-const eventData = ref({});
+import { CalendarEvent } from '@/types/CalendarEvent';
 
-const showEvent = (event) => {
+const dialog = ref(false);
+const eventData = ref<CalendarEvent | null>(null);
+
+const showEvent = (event: CalendarEvent) => {
     eventData.value = event;
     dialog.value = true;
 };
 
 function formatTime() {
+    if (!eventData.value) return '';
+
     const start = new Date(eventData.value.start.replace(' ', 'T'));
     const end = new Date(eventData.value.end.replace(' ', 'T'));
 
@@ -34,8 +38,8 @@ defineExpose({ showEvent });
     <v-dialog v-model="dialog" max-width="500">
         <v-card>
             <v-card-item>
-                <v-card-title>{{ eventData.title }}</v-card-title>
-                <v-card-subtitle>{{ eventData.gymName }}</v-card-subtitle>
+                <v-card-title>{{ eventData?.title }}</v-card-title>
+                <v-card-subtitle>{{ eventData?.gymName }}</v-card-subtitle>
             </v-card-item>
             <v-card-text>
                 <div class="event-detail">
@@ -48,24 +52,24 @@ defineExpose({ showEvent });
                     <v-icon class="mr-2" color="primary">
                         mdi-map-marker-outline
                     </v-icon>
-                    <span>{{ eventData.location }}</span>
+                    <span>{{ eventData?.location }}</span>
                 </div>
                 <div class="event-detail">
                     <v-icon class="mr-2" color="primary">
                         mdi-account-outline
                     </v-icon>
-                    <span>{{ eventData.person }}</span>
+                    <span>{{ eventData?.person }}</span>
                 </div>
                 <div class="event-detail">
                     <v-icon class="mr-2" color="primary">
                         mdi-card-text-outline
                     </v-icon>
-                    <span>{{ eventData.description }}</span>
+                    <span>{{ eventData?.description }}</span>
                 </div>
             </v-card-text>
             <v-card-actions>
                 <v-spacer />
-                <v-btn text :href="eventData.calendarUrl" target="_blank">
+                <v-btn text :href="eventData?.calendarUrl" target="_blank">
                     Register
                 </v-btn>
                 <v-btn text @click="dialog = false"> Close </v-btn>

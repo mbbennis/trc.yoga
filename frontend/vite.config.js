@@ -20,6 +20,10 @@ export default defineConfig({
       '/calendars': {
         target: 'https://www.trc.yoga',
         changeOrigin: true
+      },
+      '/data': {
+        target: 'https://www.trc.yoga',
+        changeOrigin: true
       }
     }
   }

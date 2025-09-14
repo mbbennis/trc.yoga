@@ -1,11 +1,13 @@
-<script setup>
+<script setup lang="ts">
 import { ref } from 'vue';
 
-import locations from '@/assets/locations.json';
 import CopyCalendarLink from '@/components/CopyCalendarLink.vue';
 import EventCalendar from '@/components/EventCalendar.vue';
 import LocationFilter from '@/components/LocationFilter.vue';
 
+import { locationService } from './services/BundledLocationService';
+
+const locations = locationService.getLocations();
 const filteredLocations = ref([]);
 </script>
 <template>

@@ -3,5 +3,6 @@ export interface Location {
     mediumName: string;
     shortName: string;
     address: string;
+    calendarUrl: string;
     color: 'red' | 'yellow' | 'green' | 'blue';
 }

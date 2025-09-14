@@ -1,9 +1,11 @@
-<script setup>
-import { shallowRef, watch } from 'vue';
+<script setup lang="ts">
+import { PropType, shallowRef, watch } from 'vue';
+
+import { Location } from '@/types/Location';
 
 const props = defineProps({
     locations: {
-        type: Array,
+        type: Array as PropType<Location[]>,
         required: true,
     },
 });
