@@ -5,7 +5,6 @@ import {
     CalendarEvent,
     createCalendar,
     createViewDay,
-    createViewWeek,
 } from '@schedule-x/calendar';
 import { createEventsServicePlugin } from '@schedule-x/events-service';
 import { ScheduleXCalendar } from '@schedule-x/vue';
@@ -44,7 +43,7 @@ watch(filteredEvents, (newEvents) => {
 
 const calendar = createCalendar(
     {
-        views: [createViewDay(), createViewWeek()],
+        views: [createViewDay()],
         isDark: true,
         calendars: colors,
         dayBoundaries: {
