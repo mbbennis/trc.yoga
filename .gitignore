@@ -1,0 +1,11 @@
+.claude/
+lambda/node_modules/
+lambda/dist/
+lambda/lambda.zip
+web/node_modules/
+web/dist/
+*.tfvars
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
