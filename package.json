@@ -1,0 +1,13 @@
+{
+  "name": "trc.yoga",
+  "private": true,
+  "scripts": {
+    "build:web": "npm run build --prefix web",
+    "build:lambda": "npm run package --prefix lambda",
+    "build": "npm run build:web && npm run build:lambda",
+    "test": "npm test --prefix lambda",
+    "deploy:web": "npm run build:web && aws s3 sync web/dist/ s3://trc.yoga --delete --exclude '*.ics'",
+    "deploy:lambda": "npm run build:lambda && cd terraform && terraform apply -auto-approve",
+    "deploy": "npm run deploy:web && npm run deploy:lambda"
+  }
+}
