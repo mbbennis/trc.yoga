@@ -35,9 +35,12 @@ export default function EventCard({ event }: Props) {
           </div>
           <div className="event-summary">{event.summary}</div>
         </div>
-        <span className="event-badge" style={{ backgroundColor: color }}>
-          {location?.name ?? event.locationAbbr}
-        </span>
+        <div className="event-badges">
+          {event.soldOut && <span className="event-badge sold-out-badge">Class Full</span>}
+          <span className="event-badge" style={{ backgroundColor: color }}>
+            {location?.name ?? event.locationAbbr}
+          </span>
+        </div>
       </div>
       {expanded && (
         <div className="event-card-details">

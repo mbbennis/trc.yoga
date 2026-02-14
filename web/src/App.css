@@ -158,6 +158,13 @@ h1 {
   text-overflow: ellipsis;
 }
 
+.event-badges {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+  align-items: center;
+}
+
 .event-badge {
   flex-shrink: 0;
   font-size: 0.7rem;
@@ -165,6 +172,10 @@ h1 {
   color: #fff;
   padding: 2px 8px;
   border-radius: 10px;
+}
+
+.sold-out-badge {
+  background-color: #999;
 }
 
 .event-card-details {
@@ -179,6 +190,12 @@ h1 {
   margin-bottom: 8px;
 }
 
+.event-detail-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
 .event-link {
   display: inline-block;
   font-size: 0.8rem;
@@ -189,4 +206,11 @@ h1 {
 
 .event-link:hover {
   text-decoration: underline;
+}
+
+.capacity-checked {
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+  margin-left: auto;
+  font-style: italic;
 }

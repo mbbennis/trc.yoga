@@ -26,19 +26,24 @@ export function useEvents(selectedAbbrs: string[]) {
             const text = await res.text();
             const vevents = extractVEvents(text);
 
-            return vevents.map((vevent): YogaEvent => ({
-              uid: parseField(vevent, 'UID') ?? '',
-              summary: parseField(vevent, 'SUMMARY') ?? '',
-              description: parseField(vevent, 'DESCRIPTION')
-                ?.replace(/\\n/g, '\n')
-                .replace(/\\,/g, ',')
-                .replace(/\\;/g, ';')
-                .replace(/\\\\/g, '\\') ?? '',
-              dtstart: parseIcalDate(parseField(vevent, 'DTSTART') ?? ''),
-              dtend: parseIcalDate(parseField(vevent, 'DTEND') ?? parseField(vevent, 'DTSTART') ?? ''),
-              url: parseField(vevent, 'URL') || undefined,
-              locationAbbr: loc.abbr,
-            }));
+            return vevents.map((vevent): YogaEvent => {
+              const soldOutRaw = parseField(vevent, 'X-SOLD-OUT');
+              return {
+                uid: parseField(vevent, 'UID') ?? '',
+                summary: parseField(vevent, 'SUMMARY') ?? '',
+                description: parseField(vevent, 'DESCRIPTION')
+                  ?.replace(/\\n/g, '\n')
+                  .replace(/\\,/g, ',')
+                  .replace(/\\;/g, ';')
+                  .replace(/\\\\/g, '\\') ?? '',
+                dtstart: parseIcalDate(parseField(vevent, 'DTSTART') ?? ''),
+                dtend: parseIcalDate(parseField(vevent, 'DTEND') ?? parseField(vevent, 'DTSTART') ?? ''),
+                url: parseField(vevent, 'URL') || undefined,
+                locationAbbr: loc.abbr,
+                soldOut: soldOutRaw === 'TRUE' ? true : soldOutRaw === 'FALSE' ? false : undefined,
+                capacityCheckedAt: parseField(vevent, 'X-CAPACITY-CHECKED-AT') || undefined,
+              };
+            });
           }),
         );
 

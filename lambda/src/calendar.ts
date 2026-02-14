@@ -1,5 +1,6 @@
 import { DynamoDBClient, QueryCommand } from "@aws-sdk/client-dynamodb";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { extractOfferingUrl } from "./capacity";
 
 const dynamo = new DynamoDBClient({});
 const s3 = new S3Client({});
@@ -18,6 +19,8 @@ interface EventItem {
   url?: string;
   improvedDescription?: string;
   description?: string;
+  soldOut?: boolean;
+  capacityCheckedAt?: string;
 }
 
 /**
@@ -108,7 +111,7 @@ export function buildIcalFile(vevents: string[], calendarName: string): string {
   return lines.join("\r\n") + "\r\n";
 }
 
-function parseItem(item: Record<string, { S?: string }>): EventItem {
+function parseItem(item: Record<string, { S?: string; BOOL?: boolean }>): EventItem {
   return {
     uid: item.uid?.S ?? "",
     dtstart: item.dtstart?.S ?? "",
@@ -119,6 +122,8 @@ function parseItem(item: Record<string, { S?: string }>): EventItem {
     url: item.url?.S,
     improvedDescription: item.improvedDescription?.S,
     description: item.description?.S,
+    soldOut: item.soldOut?.BOOL,
+    capacityCheckedAt: item.capacityCheckedAt?.S,
   };
 }
 
@@ -161,7 +166,7 @@ export async function handler(): Promise<{ statusCode: number; body: string }> {
       );
 
       for (const item of result.Items ?? []) {
-        items.push(parseItem(item as Record<string, { S?: string }>));
+        items.push(parseItem(item as Record<string, { S?: string; BOOL?: boolean }>));
       }
 
       lastKey = result.LastEvaluatedKey as Record<string, { S: string }> | undefined;
@@ -193,8 +198,17 @@ export async function handler(): Promise<{ statusCode: number; body: string }> {
       if (event.address) {
         vevent = replaceLocation(vevent, event.address);
       }
-      if (event.url) {
+      const offeringUrl = extractOfferingUrl(event.rawVevent);
+      if (offeringUrl) {
+        vevent = replaceVeventField(vevent, "URL", offeringUrl);
+      } else if (event.url) {
         vevent = replaceVeventField(vevent, "URL", event.url);
+      }
+      if (event.soldOut !== undefined) {
+        vevent = replaceVeventField(vevent, "X-SOLD-OUT", event.soldOut ? "TRUE" : "FALSE");
+      }
+      if (event.capacityCheckedAt) {
+        vevent = replaceVeventField(vevent, "X-CAPACITY-CHECKED-AT", event.capacityCheckedAt);
       }
       const shortName = event.locationName.replace(/^Triangle Rock Club - /i, "");
       vevent = replaceVeventField(vevent, "CATEGORIES", shortName);

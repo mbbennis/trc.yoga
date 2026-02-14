@@ -5,10 +5,11 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
-      // Proxy .ics requests to the S3 website bucket during dev
+      // Proxy .ics requests to production during dev
       '^/.*\\.ics$': {
-        target: 'http://trc-yoga-website.s3-website-us-east-1.amazonaws.com',
+        target: 'https://trc.yoga',
         changeOrigin: true,
+        secure: true,
       },
     },
   },

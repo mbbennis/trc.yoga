@@ -1,4 +1,5 @@
-import { powerSet, buildIcalFile, replaceDescription, replaceLocation } from "./calendar";
+import { powerSet, buildIcalFile, replaceDescription, replaceLocation, replaceVeventField } from "./calendar";
+import { extractOfferingUrl } from "./capacity";
 
 // --------------- powerSet ---------------
 
@@ -200,5 +201,95 @@ describe("replaceLocation", () => {
     expect(result).toContain("SUMMARY:Morning Flow");
     expect(result).toContain("DTSTART:20260615T090000");
     expect(result).toContain("LOCATION:New Address");
+  });
+});
+
+// --------------- X-SOLD-OUT ---------------
+
+describe("X-SOLD-OUT in VEVENT", () => {
+  it("adds X-SOLD-OUT:TRUE when soldOut is true", () => {
+    const raw = "BEGIN:VEVENT\r\nSUMMARY:Yoga\r\nEND:VEVENT";
+    const result = replaceVeventField(raw, "X-SOLD-OUT", "TRUE");
+    expect(result).toContain("X-SOLD-OUT:TRUE");
+  });
+
+  it("adds X-SOLD-OUT:FALSE when soldOut is false", () => {
+    const raw = "BEGIN:VEVENT\r\nSUMMARY:Yoga\r\nEND:VEVENT";
+    const result = replaceVeventField(raw, "X-SOLD-OUT", "FALSE");
+    expect(result).toContain("X-SOLD-OUT:FALSE");
+  });
+
+  it("does not add X-SOLD-OUT when soldOut is undefined", () => {
+    // Simulates the handler logic: replaceVeventField is only called when soldOut is defined
+    const raw = "BEGIN:VEVENT\r\nSUMMARY:Yoga\r\nEND:VEVENT";
+    const soldOut: boolean | undefined = undefined;
+    let vevent = raw;
+    if (soldOut !== undefined) {
+      vevent = replaceVeventField(vevent, "X-SOLD-OUT", soldOut ? "TRUE" : "FALSE");
+    }
+    expect(vevent).not.toContain("X-SOLD-OUT");
+  });
+
+  it("replaces existing X-SOLD-OUT value", () => {
+    const raw = "BEGIN:VEVENT\r\nSUMMARY:Yoga\r\nX-SOLD-OUT:FALSE\r\nEND:VEVENT";
+    const result = replaceVeventField(raw, "X-SOLD-OUT", "TRUE");
+    expect(result).toContain("X-SOLD-OUT:TRUE");
+    expect(result).not.toContain("X-SOLD-OUT:FALSE");
+  });
+});
+
+// --------------- X-CAPACITY-CHECKED-AT ---------------
+
+describe("X-CAPACITY-CHECKED-AT in VEVENT", () => {
+  it("adds X-CAPACITY-CHECKED-AT with the ISO timestamp value", () => {
+    const raw = "BEGIN:VEVENT\r\nSUMMARY:Yoga\r\nEND:VEVENT";
+    const timestamp = "2026-02-14T12:30:00.000Z";
+    const result = replaceVeventField(raw, "X-CAPACITY-CHECKED-AT", timestamp);
+    expect(result).toContain("X-CAPACITY-CHECKED-AT:2026-02-14T12:30:00.000Z");
+  });
+
+  it("is omitted when capacityCheckedAt is undefined", () => {
+    const raw = "BEGIN:VEVENT\r\nSUMMARY:Yoga\r\nEND:VEVENT";
+    const capacityCheckedAt: string | undefined = undefined;
+    let vevent = raw;
+    if (capacityCheckedAt) {
+      vevent = replaceVeventField(vevent, "X-CAPACITY-CHECKED-AT", capacityCheckedAt);
+    }
+    expect(vevent).not.toContain("X-CAPACITY-CHECKED-AT");
+  });
+});
+
+// --------------- URL replaced with RGP offering URL ---------------
+
+describe("URL replacement with RGP offering URL", () => {
+  it("replaces URL with extracted offering URL", () => {
+    const offeringUrl =
+      "https://app.rockgympro.com/b/widget/?a=offering&offering_guid=abc123&widget_guid=def456&mode=e";
+    const raw = [
+      "BEGIN:VEVENT",
+      "SUMMARY:Yoga",
+      `URL:${offeringUrl}`,
+      "END:VEVENT",
+    ].join("\r\n");
+
+    const extracted = extractOfferingUrl(raw);
+    expect(extracted).toBeDefined();
+    // mode=e should be swapped to mode=p
+    expect(extracted).toContain("mode=p");
+
+    const result = replaceVeventField(raw, "URL", extracted!);
+    expect(result).toContain("mode=p");
+    expect(result).not.toContain("mode=e");
+  });
+
+  it("falls back to event.url when no offering URL is available", () => {
+    const raw = "BEGIN:VEVENT\r\nSUMMARY:Yoga\r\nEND:VEVENT";
+    const extracted = extractOfferingUrl(raw);
+    expect(extracted).toBeUndefined();
+
+    // Simulate fallback logic
+    const fallbackUrl = "https://trianglerockclub.com/fitness-yoga/";
+    const result = replaceVeventField(raw, "URL", fallbackUrl);
+    expect(result).toContain(`URL:${fallbackUrl}`);
   });
 });

@@ -59,6 +59,11 @@ variable "calendar_schedule" {
   default     = "cron(10 * * * ? *)"
 }
 
+variable "capacity_schedule" {
+  description = "EventBridge schedule for the capacity Lambda"
+  default     = "cron(*/30 * * * ? *)"
+}
+
 variable "domain_name" {
   description = "Domain name for the website"
   default     = "trc.yoga"
@@ -344,6 +349,76 @@ resource "aws_lambda_permission" "eventbridge_calendar" {
   source_arn    = aws_cloudwatch_event_rule.calendar_schedule.arn
 }
 
+# ---------- Capacity Lambda IAM ----------
+
+data "aws_iam_policy_document" "capacity_lambda_permissions" {
+  statement {
+    actions   = ["dynamodb:Query"]
+    resources = [
+      aws_dynamodb_table.yoga_events.arn,
+      "${aws_dynamodb_table.yoga_events.arn}/index/*",
+    ]
+  }
+  statement {
+    actions   = ["dynamodb:UpdateItem"]
+    resources = [aws_dynamodb_table.yoga_events.arn]
+  }
+  statement {
+    actions   = ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"]
+    resources = ["arn:aws:logs:*:*:*"]
+  }
+}
+
+resource "aws_iam_role" "capacity_lambda" {
+  name               = "trc-yoga-capacity-lambda"
+  assume_role_policy = data.aws_iam_policy_document.lambda_assume.json
+}
+
+resource "aws_iam_role_policy" "capacity_lambda" {
+  role   = aws_iam_role.capacity_lambda.id
+  policy = data.aws_iam_policy_document.capacity_lambda_permissions.json
+}
+
+# ---------- Capacity Lambda ----------
+
+resource "aws_lambda_function" "yoga_capacity" {
+  function_name                  = "trc-yoga-capacity"
+  role                           = aws_iam_role.capacity_lambda.arn
+  handler                        = "capacity.handler"
+  runtime                        = "nodejs20.x"
+  timeout                        = 300
+  memory_size                    = 256
+  reserved_concurrent_executions = 1
+  filename                       = "${path.module}/../lambda/lambda.zip"
+  source_code_hash               = filebase64sha256("${path.module}/../lambda/lambda.zip")
+
+  environment {
+    variables = {
+      DYNAMODB_TABLE = var.dynamodb_table_name
+      ICAL_SOURCES   = jsonencode(var.ical_sources)
+      HTTP_DELAY_MS  = "1000"
+    }
+  }
+}
+
+resource "aws_cloudwatch_event_rule" "capacity_schedule" {
+  name                = "trc-yoga-capacity-schedule"
+  schedule_expression = var.capacity_schedule
+}
+
+resource "aws_cloudwatch_event_target" "capacity" {
+  rule = aws_cloudwatch_event_rule.capacity_schedule.name
+  arn  = aws_lambda_function.yoga_capacity.arn
+}
+
+resource "aws_lambda_permission" "eventbridge_capacity" {
+  statement_id  = "AllowEventBridgeInvoke"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.yoga_capacity.function_name
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.capacity_schedule.arn
+}
+
 # ---------- SQS Alarm (SNS + CloudWatch) ----------
 
 resource "aws_sns_topic" "yoga_alarms" {
@@ -400,6 +475,10 @@ output "calendar_s3_bucket" {
 
 output "calendar_website_url" {
   value = "https://${var.domain_name}"
+}
+
+output "capacity_lambda_function_name" {
+  value = aws_lambda_function.yoga_capacity.function_name
 }
 
 output "sqs_queue_url" {

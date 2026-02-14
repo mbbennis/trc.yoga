@@ -12,4 +12,6 @@ export interface YogaEvent {
   dtend: Date;
   url?: string;
   locationAbbr: string;
+  soldOut?: boolean;
+  capacityCheckedAt?: string;
 }
