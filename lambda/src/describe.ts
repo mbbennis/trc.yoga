@@ -68,7 +68,10 @@ export async function handler(event: SQSEvent): Promise<SQSBatchResponse> {
         console.log(`No description for ${msg.uid} (${msg.dtstart}), skipping Bedrock`);
       }
 
-      const item: Record<string, { S: string }> = {
+      // TTL: 1 year from now (epoch seconds)
+      const ttl = Math.floor(Date.now() / 1000) + 365 * 24 * 60 * 60;
+
+      const item: Record<string, { S: string } | { N: string }> = {
         uid: { S: msg.uid },
         dtstart: { S: msg.dtstart },
         location: { S: msg.location },
@@ -76,6 +79,7 @@ export async function handler(event: SQSEvent): Promise<SQSBatchResponse> {
         rawVevent: { S: msg.rawVevent },
         address: { S: msg.address },
         url: { S: msg.url },
+        ttl: { N: String(ttl) },
       };
 
       for (const field of ["summary", "description", "dtend"] as const) {

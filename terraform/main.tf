@@ -69,6 +69,11 @@ variable "cloudflare_zone_id" {
   type        = string
 }
 
+variable "alarm_email" {
+  description = "Email address for CloudWatch alarm notifications"
+  type        = string
+}
+
 # ---------- DynamoDB Table ----------
 
 resource "aws_dynamodb_table" "yoga_events" {
@@ -99,13 +104,28 @@ resource "aws_dynamodb_table" "yoga_events" {
     range_key       = "dtstart"
     projection_type = "ALL"
   }
+
+  ttl {
+    attribute_name = "ttl"
+    enabled        = true
+  }
 }
 
 # ---------- SQS Queue ----------
 
+resource "aws_sqs_queue" "yoga_events_dlq" {
+  name                       = "trc-yoga-events-dlq"
+  message_retention_seconds  = 1209600 # 14 days
+}
+
 resource "aws_sqs_queue" "yoga_events" {
   name                       = "trc-yoga-events"
   visibility_timeout_seconds = 360
+
+  redrive_policy = jsonencode({
+    deadLetterTargetArn = aws_sqs_queue.yoga_events_dlq.arn
+    maxReceiveCount     = 3
+  })
 }
 
 # ---------- IAM ----------
@@ -201,14 +221,15 @@ resource "aws_iam_role_policy" "describe_lambda" {
 }
 
 resource "aws_lambda_function" "yoga_describe" {
-  function_name    = "trc-yoga-describe"
-  role             = aws_iam_role.describe_lambda.arn
-  handler          = "describe.handler"
-  runtime          = "nodejs20.x"
-  timeout          = 60
-  memory_size      = 256
-  filename         = "${path.module}/../lambda/lambda.zip"
-  source_code_hash = filebase64sha256("${path.module}/../lambda/lambda.zip")
+  function_name                  = "trc-yoga-describe"
+  role                           = aws_iam_role.describe_lambda.arn
+  handler                        = "describe.handler"
+  runtime                        = "nodejs20.x"
+  timeout                        = 60
+  memory_size                    = 256
+  reserved_concurrent_executions = 5
+  filename                       = "${path.module}/../lambda/lambda.zip"
+  source_code_hash               = filebase64sha256("${path.module}/../lambda/lambda.zip")
 
   environment {
     variables = {
@@ -321,6 +342,38 @@ resource "aws_lambda_permission" "eventbridge_calendar" {
   function_name = aws_lambda_function.yoga_calendar.function_name
   principal     = "events.amazonaws.com"
   source_arn    = aws_cloudwatch_event_rule.calendar_schedule.arn
+}
+
+# ---------- SQS Alarm (SNS + CloudWatch) ----------
+
+resource "aws_sns_topic" "yoga_alarms" {
+  name = "trc-yoga-alarms"
+}
+
+resource "aws_sns_topic_subscription" "alarm_email" {
+  topic_arn = aws_sns_topic.yoga_alarms.arn
+  protocol  = "email"
+  endpoint  = var.alarm_email
+}
+
+resource "aws_cloudwatch_metric_alarm" "sqs_queue_depth" {
+  alarm_name          = "trc-yoga-sqs-queue-depth"
+  alarm_description   = "SQS queue depth exceeds 100 messages"
+  namespace           = "AWS/SQS"
+  metric_name         = "ApproximateNumberOfMessagesVisible"
+  statistic           = "Maximum"
+  period              = 300
+  evaluation_periods  = 1
+  threshold           = 100
+  comparison_operator = "GreaterThanThreshold"
+  treat_missing_data  = "notBreaching"
+
+  dimensions = {
+    QueueName = aws_sqs_queue.yoga_events.name
+  }
+
+  alarm_actions = [aws_sns_topic.yoga_alarms.arn]
+  ok_actions    = [aws_sns_topic.yoga_alarms.arn]
 }
 
 # ---------- Outputs ----------
