@@ -1,6 +1,6 @@
 # trc.yoga
 
-Aggregates yoga class schedules from Triangle Rock Club locations (Morrisville, North Raleigh, Salvage Yard, Durham) into a browsable website and subscribable iCal feeds.
+Aggregates yoga and fitness class schedules from Triangle Rock Club locations (Morrisville, North Raleigh, Salvage Yard, Durham) into a browsable website and subscribable iCal feeds.
 
 Live at **[trc.yoga](https://trc.yoga)**
 
@@ -14,9 +14,10 @@ iCal feeds ─► Ingest Lambda ─► SQS ─► Describe Lambda (Bedrock) ─�
                                                           React frontend ─────┘─► trc.yoga
 ```
 
-- **Ingest** — Fetches iCal feeds hourly, filters for yoga events, sends new ones to SQS
-- **Describe** — Uses Amazon Nova Micro to rewrite class descriptions into concise summaries, stores in DynamoDB
-- **Calendar** — Generates `.ics` files for every combination of locations, uploads to S3
+- **Ingest** — Fetches iCal feeds daily, detects new/changed events via content hashing, sends them to SQS
+- **Describe** — Uses Amazon Nova Micro to rewrite class descriptions into concise summaries, classifies events as yoga or fitness, stores in DynamoDB
+- **Calendar** — Generates `.ics` files for every combination of locations under `calendars/yoga/` and `calendars/fitness/`, uploads to S3
+- **Capacity** — Checks class capacity/sold-out status and updates DynamoDB records
 - **Web** — React/Vite frontend that parses `.ics` feeds client-side with location filtering and calendar subscription links
 
 ## Prerequisites
