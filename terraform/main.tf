@@ -51,7 +51,7 @@ variable "dynamodb_table_name" {
 
 variable "aggregator_schedule" {
   description = "EventBridge schedule for the aggregator Lambda"
-  default     = "cron(0 * * * ? *)"
+  default     = "cron(0 6 * * ? *)"
 }
 
 variable "calendar_schedule" {
