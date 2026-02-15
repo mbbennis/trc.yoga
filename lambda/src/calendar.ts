@@ -1,3 +1,9 @@
+/**
+ * Calendar Lambda — queries DynamoDB for recent events, generates .ics files for
+ * every combination of locations (power set), and writes them to S3. Each VEVENT
+ * is enriched with improved descriptions, addresses, offering URLs, sold-out
+ * status, and capacity check timestamps.
+ */
 import { DynamoDBClient, QueryCommand } from "@aws-sdk/client-dynamodb";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { extractOfferingUrl } from "./capacity";

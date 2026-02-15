@@ -1,3 +1,8 @@
+/**
+ * Capacity Lambda — queries DynamoDB for upcoming events, fetches each offering's
+ * RockGymPro page to check availability, and updates events with sold-out status
+ * and a capacityCheckedAt timestamp.
+ */
 import { DynamoDBClient, QueryCommand, UpdateItemCommand } from "@aws-sdk/client-dynamodb";
 
 const dynamo = new DynamoDBClient({});

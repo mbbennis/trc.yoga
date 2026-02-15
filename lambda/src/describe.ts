@@ -1,3 +1,8 @@
+/**
+ * Describe Lambda — consumes SQS messages from ingest, uses Bedrock (Nova Micro)
+ * to rewrite event descriptions into concise summaries, and stores enriched
+ * event records in DynamoDB.
+ */
 import { DynamoDBClient, PutItemCommand } from "@aws-sdk/client-dynamodb";
 import { BedrockRuntimeClient, InvokeModelCommand } from "@aws-sdk/client-bedrock-runtime";
 import type { SQSEvent, SQSBatchResponse } from "aws-lambda";

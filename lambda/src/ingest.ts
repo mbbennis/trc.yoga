@@ -1,3 +1,7 @@
+/**
+ * Ingest Lambda — fetches iCal feeds from configured sources, filters for yoga
+ * events newer than the latest in DynamoDB, and sends them to SQS for enrichment.
+ */
 import { DynamoDBClient, QueryCommand } from "@aws-sdk/client-dynamodb";
 import { SQSClient, SendMessageBatchCommand } from "@aws-sdk/client-sqs";
 
