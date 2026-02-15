@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
+import { useCallback, useState, useSyncExternalStore } from 'react';
 import { LOCATIONS } from './constants.ts';
 import { useEvents } from './hooks/useEvents.ts';
 import LocationChips from './components/LocationChips.tsx';
@@ -61,9 +61,6 @@ function App() {
   const otherLabel = category === 'fitness' ? 'View Yoga classes' : 'View Fitness classes';
   const otherHref = category === 'fitness' ? '/' : '/fitness';
 
-  useEffect(() => {
-    document.title = title;
-  }, [title]);
 
   return (
     <div className="container">
