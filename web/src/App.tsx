@@ -5,17 +5,34 @@ import LocationChips from './components/LocationChips.tsx';
 import CopyLinkButton from './components/CopyLinkButton.tsx';
 import EventList from './components/EventList.tsx';
 
+const COOKIE_NAME = 'selectedLocations';
+const allAbbrs = LOCATIONS.map((l) => l.abbr);
+
+function readCookie(): string[] | null {
+  const match = document.cookie.match(new RegExp(`(?:^|; )${COOKIE_NAME}=([^;]*)`));
+  if (!match) return null;
+  const abbrs = decodeURIComponent(match[1]).split(',').filter((a) => allAbbrs.includes(a));
+  return abbrs.length > 0 ? abbrs : null;
+}
+
+function writeCookie(abbrs: string[]) {
+  const expires = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toUTCString();
+  document.cookie = `${COOKIE_NAME}=${encodeURIComponent(abbrs.join(','))};expires=${expires};path=/;SameSite=Lax`;
+}
+
 function App() {
   const [selected, setSelected] = useState<string[]>(
-    LOCATIONS.map((l) => l.abbr),
+    () => readCookie() ?? allAbbrs,
   );
 
   const { events, loading, error } = useEvents(selected);
 
   function toggle(abbr: string) {
-    setSelected((prev) =>
-      prev.includes(abbr) ? prev.filter((a) => a !== abbr) : [...prev, abbr],
-    );
+    setSelected((prev) => {
+      const next = prev.includes(abbr) ? prev.filter((a) => a !== abbr) : [...prev, abbr];
+      writeCookie(next);
+      return next;
+    });
   }
 
   return (

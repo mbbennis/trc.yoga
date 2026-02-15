@@ -53,7 +53,7 @@ export function useEvents(selectedAbbrs: string[]) {
         const twoWeeks = new Date(today.getTime() + 14 * 24 * 60 * 60 * 1000);
         const merged = results
           .flat()
-          .filter((e) => e.dtstart >= today && e.dtstart < twoWeeks)
+          .filter((e) => e.dtend > new Date() && e.dtstart < twoWeeks)
           .sort((a, b) => a.dtstart.getTime() - b.dtstart.getTime());
 
         setAllEvents(merged);
