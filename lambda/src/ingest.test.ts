@@ -16,6 +16,18 @@ describe("computeContentHash", () => {
     const b = computeContentHash("BEGIN:VEVENT\r\nSUMMARY:Yoga B\r\nEND:VEVENT");
     expect(a).not.toBe(b);
   });
+
+  it("ignores DTSTAMP changes", () => {
+    const a = computeContentHash("BEGIN:VEVENT\r\nSUMMARY:Yoga\r\nDTSTAMP:20260101T000000Z\r\nEND:VEVENT");
+    const b = computeContentHash("BEGIN:VEVENT\r\nSUMMARY:Yoga\r\nDTSTAMP:20260202T120000Z\r\nEND:VEVENT");
+    expect(a).toBe(b);
+  });
+
+  it("ignores URL changes (volatile random parameter)", () => {
+    const a = computeContentHash("BEGIN:VEVENT\r\nSUMMARY:Yoga\r\nURL:https://example.com?random=abc123\r\nEND:VEVENT");
+    const b = computeContentHash("BEGIN:VEVENT\r\nSUMMARY:Yoga\r\nURL:https://example.com?random=xyz789\r\nEND:VEVENT");
+    expect(a).toBe(b);
+  });
 });
 
 // --------------- extractVEvents ---------------

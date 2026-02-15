@@ -121,6 +121,7 @@ export async function handler(event: SQSEvent): Promise<SQSBatchResponse> {
         address: { S: msg.address },
         url: { S: msg.url },
         ttl: { N: String(ttl) },
+        lastModified: { S: new Date().toISOString() },
       };
 
       const category = classifyEvent(msg.rawVevent);

@@ -85,9 +85,16 @@ export function parseVEventField(vevent: string, field: string): string | undefi
 
 /**
  * Compute a SHA-256 hex digest of the raw VEVENT string for change detection.
+ * Strips volatile fields that change on every fetch but don't represent
+ * meaningful changes: DTSTAMP (server timestamp) and URL (contains a random
+ * query parameter from RockGymPro).
  */
 export function computeContentHash(vevent: string): string {
-  return createHash("sha256").update(vevent).digest("hex");
+  const stable = vevent
+    .split(/\r?\n/)
+    .filter((line) => !/^(DTSTAMP|URL)[;:]/i.test(line))
+    .join("\r\n");
+  return createHash("sha256").update(stable).digest("hex");
 }
 
 async function fetchIcal(url: string): Promise<string> {
