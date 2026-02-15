@@ -51,10 +51,3 @@ From the project root:
 | `npm run deploy:web` | Build and sync frontend to S3 |
 | `npm run deploy:lambda` | Build lambda and terraform apply |
 | `npm run deploy` | Deploy everything |
-
-## Cost Safety Measures
-
-- **DynamoDB TTL** — Records auto-expire after 1 year
-- **SQS Dead Letter Queue** — Failed messages retry 3 times then move to DLQ (14-day retention)
-- **CloudWatch Alarm** — Alerts via email when SQS queue depth exceeds 100 messages
-- **Reserved Concurrency** — Describe lambda capped at 5 concurrent executions to limit Bedrock spend
