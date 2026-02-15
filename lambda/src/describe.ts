@@ -32,20 +32,24 @@ function unfold(vevent: string): string[] {
 }
 
 /**
- * Classify a VEVENT as "yoga" or "fitness" based on whether the word "yoga"
- * appears (case-insensitive) in its SUMMARY, DESCRIPTION, or LOCATION fields.
+ * Classify a VEVENT as "yoga" or "fitness" based on its SUMMARY, DESCRIPTION,
+ * or LOCATION fields. Events mentioning "run club" are always fitness;
+ * otherwise events mentioning "yoga" are yoga; everything else is fitness.
  */
 export function classifyEvent(vevent: string): "yoga" | "fitness" {
   const pattern = /^(SUMMARY|DESCRIPTION|LOCATION)[;:](.*)$/im;
   const unfolded = unfold(vevent);
 
+  let hasYoga = false;
   for (const line of unfolded) {
     const match = line.match(pattern);
-    if (match && match[2].toLowerCase().includes("yoga")) {
-      return "yoga";
+    if (match) {
+      const value = match[2].toLowerCase();
+      if (value.includes("run club")) return "fitness";
+      if (value.includes("yoga")) hasYoga = true;
     }
   }
-  return "fitness";
+  return hasYoga ? "yoga" : "fitness";
 }
 
 export function buildPrompt(summary: string, description: string): string {

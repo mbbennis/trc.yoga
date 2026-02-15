@@ -47,6 +47,16 @@ describe("classifyEvent", () => {
     const vevent = "BEGIN:VEVENT\r\nSUMMARY:Pilates\r\nX-CUSTOM:yoga\r\nEND:VEVENT";
     expect(classifyEvent(vevent)).toBe("fitness");
   });
+
+  it("returns fitness for run club even if yoga appears elsewhere", () => {
+    const vevent = "BEGIN:VEVENT\r\nSUMMARY:Run Club\r\nDESCRIPTION:Meet at the yoga studio\r\nEND:VEVENT";
+    expect(classifyEvent(vevent)).toBe("fitness");
+  });
+
+  it("returns fitness for run club (case-insensitive)", () => {
+    const vevent = "BEGIN:VEVENT\r\nSUMMARY:TRC RUN CLUB\r\nEND:VEVENT";
+    expect(classifyEvent(vevent)).toBe("fitness");
+  });
 });
 
 // --------------- buildPrompt ---------------

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import { LOCATIONS } from './constants.ts';
 import { useEvents } from './hooks/useEvents.ts';
 import LocationChips from './components/LocationChips.tsx';
@@ -20,7 +20,29 @@ function writeCookie(abbrs: string[]) {
   document.cookie = `${COOKIE_NAME}=${encodeURIComponent(abbrs.join(','))};expires=${expires};path=/;SameSite=Lax`;
 }
 
-function EventPage({ title, category, otherLabel, otherHref }: { title: string; category: string; otherLabel: string; otherHref: string }) {
+// Minimal client-side router via pushState + popstate
+function usePath(): [string, (to: string) => void] {
+  const path = useSyncExternalStore(
+    (cb) => { window.addEventListener('popstate', cb); return () => window.removeEventListener('popstate', cb); },
+    () => window.location.pathname,
+  );
+
+  const navigate = useCallback((to: string) => {
+    window.history.pushState(null, '', to);
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  }, []);
+
+  return [path, navigate];
+}
+
+function categoryFromPath(path: string): 'yoga' | 'fitness' {
+  return path === '/fitness' || path === '/fitness/' ? 'fitness' : 'yoga';
+}
+
+function App() {
+  const [path, navigate] = usePath();
+  const category = categoryFromPath(path);
+
   const [selected, setSelected] = useState<string[]>(
     () => readCookie() ?? allAbbrs,
   );
@@ -35,25 +57,27 @@ function EventPage({ title, category, otherLabel, otherHref }: { title: string; 
     });
   }
 
+  const title = category === 'fitness' ? 'TRC Fitness' : 'TRC Yoga';
+  const otherLabel = category === 'fitness' ? 'View Yoga classes' : 'View Fitness classes';
+  const otherHref = category === 'fitness' ? '/' : '/fitness';
+
+  useEffect(() => {
+    document.title = title;
+  }, [title]);
+
   return (
     <div className="container">
       <h1><img src="/favicon-32x32.png" alt="" width="24" height="24" />{title}</h1>
-      <nav className="page-nav"><a href={otherHref}>{otherLabel}</a></nav>
+      <nav className="page-nav">
+        <a href={otherHref} onClick={(e) => { e.preventDefault(); navigate(otherHref); }}>
+          {otherLabel}
+        </a>
+      </nav>
       <LocationChips selected={selected} onToggle={toggle} />
       <CopyLinkButton selected={selected} category={category} />
       <EventList events={events} loading={loading} error={error} />
     </div>
   );
-}
-
-function App() {
-  const path = window.location.pathname;
-
-  if (path === '/fitness' || path === '/fitness/') {
-    return <EventPage title="TRC Fitness" category="fitness" otherLabel="View Yoga classes" otherHref="/" />;
-  }
-
-  return <EventPage title="TRC Yoga" category="yoga" otherLabel="View Fitness classes" otherHref="/fitness" />;
 }
 
 export default App;
