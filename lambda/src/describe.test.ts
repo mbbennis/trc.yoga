@@ -1,4 +1,53 @@
-import { buildPrompt } from "./describe";
+import { buildPrompt, classifyEvent } from "./describe";
+
+// --------------- classifyEvent ---------------
+
+describe("classifyEvent", () => {
+  it("returns yoga when SUMMARY contains yoga", () => {
+    const vevent = "BEGIN:VEVENT\r\nSUMMARY:Morning Yoga Flow\r\nEND:VEVENT";
+    expect(classifyEvent(vevent)).toBe("yoga");
+  });
+
+  it("returns yoga when DESCRIPTION contains yoga", () => {
+    const vevent = "BEGIN:VEVENT\r\nSUMMARY:Fitness Class\r\nDESCRIPTION:A relaxing yoga session\r\nEND:VEVENT";
+    expect(classifyEvent(vevent)).toBe("yoga");
+  });
+
+  it("returns yoga when LOCATION contains yoga", () => {
+    const vevent = "BEGIN:VEVENT\r\nSUMMARY:Class\r\nLOCATION:Downtown Yoga Studio\r\nEND:VEVENT";
+    expect(classifyEvent(vevent)).toBe("yoga");
+  });
+
+  it("is case-insensitive", () => {
+    const vevent = "BEGIN:VEVENT\r\nSUMMARY:POWER YOGA\r\nEND:VEVENT";
+    expect(classifyEvent(vevent)).toBe("yoga");
+  });
+
+  it("returns fitness when yoga is not present", () => {
+    const vevent = "BEGIN:VEVENT\r\nSUMMARY:Pilates Class\r\nDESCRIPTION:Core workout\r\nEND:VEVENT";
+    expect(classifyEvent(vevent)).toBe("fitness");
+  });
+
+  it("handles SUMMARY with parameters (e.g. SUMMARY;LANGUAGE=en:)", () => {
+    const vevent = "BEGIN:VEVENT\r\nSUMMARY;LANGUAGE=en:Yoga Class\r\nEND:VEVENT";
+    expect(classifyEvent(vevent)).toBe("yoga");
+  });
+
+  it("handles folded (continuation) lines", () => {
+    const vevent = [
+      "BEGIN:VEVENT",
+      "SUMMARY:Long Event Name That Gets",
+      " Folded And Contains Yoga Here",
+      "END:VEVENT",
+    ].join("\r\n");
+    expect(classifyEvent(vevent)).toBe("yoga");
+  });
+
+  it("does not match yoga in unrelated fields", () => {
+    const vevent = "BEGIN:VEVENT\r\nSUMMARY:Pilates\r\nX-CUSTOM:yoga\r\nEND:VEVENT";
+    expect(classifyEvent(vevent)).toBe("fitness");
+  });
+});
 
 // --------------- buildPrompt ---------------
 

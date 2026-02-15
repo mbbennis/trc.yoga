@@ -3,13 +3,14 @@ import { buildIcsUrl } from '../utils/ics-url.ts';
 
 interface Props {
   selected: string[];
+  category?: string;
 }
 
-export default function CopyLinkButton({ selected }: Props) {
+export default function CopyLinkButton({ selected, category = "yoga" }: Props) {
   const [copied, setCopied] = useState(false);
 
   async function handleCopy() {
-    const url = buildIcsUrl(selected);
+    const url = buildIcsUrl(selected, category);
     const full = `${window.location.origin}${url}`;
     await navigator.clipboard.writeText(full);
     setCopied(true);

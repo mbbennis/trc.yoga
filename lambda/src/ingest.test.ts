@@ -1,4 +1,22 @@
-import { extractVEvents, isYogaEvent, parseVEventField } from "./ingest";
+import { extractVEvents, parseVEventField, computeContentHash } from "./ingest";
+
+// --------------- computeContentHash ---------------
+
+describe("computeContentHash", () => {
+  it("returns a consistent hex string for the same input", () => {
+    const vevent = "BEGIN:VEVENT\r\nSUMMARY:Yoga\r\nEND:VEVENT";
+    const hash1 = computeContentHash(vevent);
+    const hash2 = computeContentHash(vevent);
+    expect(hash1).toBe(hash2);
+    expect(hash1).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  it("produces different hashes for different inputs", () => {
+    const a = computeContentHash("BEGIN:VEVENT\r\nSUMMARY:Yoga A\r\nEND:VEVENT");
+    const b = computeContentHash("BEGIN:VEVENT\r\nSUMMARY:Yoga B\r\nEND:VEVENT");
+    expect(a).not.toBe(b);
+  });
+});
 
 // --------------- extractVEvents ---------------
 
@@ -59,56 +77,6 @@ describe("extractVEvents", () => {
     expect(events).toHaveLength(1);
     expect(events[0]).not.toContain("VTIMEZONE");
     expect(events[0]).not.toContain("X-WR-CALNAME");
-  });
-});
-
-// --------------- isYogaEvent ---------------
-
-describe("isYogaEvent", () => {
-  it("matches yoga in SUMMARY", () => {
-    const vevent = "BEGIN:VEVENT\r\nSUMMARY:Morning Yoga Flow\r\nEND:VEVENT";
-    expect(isYogaEvent(vevent)).toBe(true);
-  });
-
-  it("matches yoga in DESCRIPTION", () => {
-    const vevent = "BEGIN:VEVENT\r\nSUMMARY:Fitness Class\r\nDESCRIPTION:A relaxing yoga session\r\nEND:VEVENT";
-    expect(isYogaEvent(vevent)).toBe(true);
-  });
-
-  it("matches yoga in LOCATION", () => {
-    const vevent = "BEGIN:VEVENT\r\nSUMMARY:Class\r\nLOCATION:Downtown Yoga Studio\r\nEND:VEVENT";
-    expect(isYogaEvent(vevent)).toBe(true);
-  });
-
-  it("is case-insensitive", () => {
-    const vevent = "BEGIN:VEVENT\r\nSUMMARY:POWER YOGA\r\nEND:VEVENT";
-    expect(isYogaEvent(vevent)).toBe(true);
-  });
-
-  it("returns false when yoga is not present", () => {
-    const vevent = "BEGIN:VEVENT\r\nSUMMARY:Pilates Class\r\nDESCRIPTION:Core workout\r\nEND:VEVENT";
-    expect(isYogaEvent(vevent)).toBe(false);
-  });
-
-  it("handles SUMMARY with parameters (e.g. SUMMARY;LANGUAGE=en:)", () => {
-    const vevent = "BEGIN:VEVENT\r\nSUMMARY;LANGUAGE=en:Yoga Class\r\nEND:VEVENT";
-    expect(isYogaEvent(vevent)).toBe(true);
-  });
-
-  it("handles folded (continuation) lines", () => {
-    const vevent = [
-      "BEGIN:VEVENT",
-      "SUMMARY:Long Event Name That Gets",
-      " Folded And Contains Yoga Here",
-      "END:VEVENT",
-    ].join("\r\n");
-    expect(isYogaEvent(vevent)).toBe(true);
-  });
-
-  it("does not match yoga in unrelated fields like DTSTART", () => {
-    // "yoga" appearing in an unrelated field should not match
-    const vevent = "BEGIN:VEVENT\r\nSUMMARY:Pilates\r\nX-CUSTOM:yoga\r\nEND:VEVENT";
-    expect(isYogaEvent(vevent)).toBe(false);
   });
 });
 

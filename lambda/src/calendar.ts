@@ -21,6 +21,7 @@ interface EventItem {
   location: string;
   locationName: string;
   rawVevent: string;
+  category: "yoga" | "fitness";
   address?: string;
   url?: string;
   improvedDescription?: string;
@@ -124,6 +125,7 @@ function parseItem(item: Record<string, { S?: string; BOOL?: boolean }>): EventI
     location: item.location?.S ?? "",
     locationName: item.locationName?.S ?? "",
     rawVevent: item.rawVevent?.S ?? "",
+    category: (item.category?.S === "yoga" ? "yoga" : "fitness") as "yoga" | "fitness",
     address: item.address?.S,
     url: item.url?.S,
     improvedDescription: item.improvedDescription?.S,
@@ -184,7 +186,8 @@ export async function handler(): Promise<{ statusCode: number; body: string }> {
 
   // Generate power set of abbreviations
   const subsets = powerSet(abbrevs);
-  console.log(`Generating ${subsets.length} .ics files`);
+  const categories = ["yoga", "fitness"] as const;
+  console.log(`Generating ${subsets.length} .ics files per category (${categories.join(", ")})`);
 
   let filesWritten = 0;
 
@@ -195,53 +198,57 @@ export async function handler(): Promise<{ statusCode: number; body: string }> {
       merged.push(...(eventsByAbbrev[abbrev] ?? []));
     }
 
-    // Build VEVENT strings with improved descriptions and addresses
-    const vevents = merged.map((event) => {
-      let vevent = event.rawVevent;
-      if (event.improvedDescription) {
-        vevent = replaceDescription(vevent, event.improvedDescription);
-      }
-      if (event.address) {
-        vevent = replaceLocation(vevent, event.address);
-      }
-      const offeringUrl = extractOfferingUrl(event.rawVevent);
-      if (offeringUrl) {
-        vevent = replaceVeventField(vevent, "URL", offeringUrl);
-      } else if (event.url) {
-        vevent = replaceVeventField(vevent, "URL", event.url);
-      }
-      if (event.soldOut !== undefined) {
-        vevent = replaceVeventField(vevent, "X-SOLD-OUT", event.soldOut ? "TRUE" : "FALSE");
-      }
-      if (event.capacityCheckedAt) {
-        vevent = replaceVeventField(vevent, "X-CAPACITY-CHECKED-AT", event.capacityCheckedAt);
-      }
-      const shortName = event.locationName.replace(/^Triangle Rock Club - /i, "");
-      vevent = replaceVeventField(vevent, "CATEGORIES", shortName);
-      return vevent;
-    });
-
     // Calendar name from location names, stripping the "Triangle Rock Club - " prefix
     const calName = subset
       .map((abbrev) => (ICAL_SOURCES[abbrev]?.name ?? abbrev).replace(/^Triangle Rock Club - /i, ""))
       .join(", ");
 
-    const icsContent = buildIcalFile(vevents, calName);
-    const key = `${subset.join("_")}.ics`;
+    // Write one file per category
+    for (const category of categories) {
+      const catEvents = merged.filter((e) => e.category === category);
 
-    await s3.send(
-      new PutObjectCommand({
-        Bucket: S3_BUCKET,
-        Key: key,
-        Body: icsContent,
-        ContentType: "text/calendar",
-      })
-    );
+      const vevents = catEvents.map((event) => {
+        let vevent = event.rawVevent;
+        if (event.improvedDescription) {
+          vevent = replaceDescription(vevent, event.improvedDescription);
+        }
+        if (event.address) {
+          vevent = replaceLocation(vevent, event.address);
+        }
+        const offeringUrl = extractOfferingUrl(event.rawVevent);
+        if (offeringUrl) {
+          vevent = replaceVeventField(vevent, "URL", offeringUrl);
+        } else if (event.url) {
+          vevent = replaceVeventField(vevent, "URL", event.url);
+        }
+        if (event.soldOut !== undefined) {
+          vevent = replaceVeventField(vevent, "X-SOLD-OUT", event.soldOut ? "TRUE" : "FALSE");
+        }
+        if (event.capacityCheckedAt) {
+          vevent = replaceVeventField(vevent, "X-CAPACITY-CHECKED-AT", event.capacityCheckedAt);
+        }
+        const shortName = event.locationName.replace(/^Triangle Rock Club - /i, "");
+        vevent = replaceVeventField(vevent, "CATEGORIES", shortName);
+        return vevent;
+      });
 
-    filesWritten++;
+      const icsContent = buildIcalFile(vevents, calName);
+      const key = `calendars/${category}/${subset.join("_")}.ics`;
+
+      await s3.send(
+        new PutObjectCommand({
+          Bucket: S3_BUCKET,
+          Key: key,
+          Body: icsContent,
+          ContentType: "text/calendar",
+        })
+      );
+
+      filesWritten++;
+    }
   }
 
-  const summary = `Wrote ${filesWritten} .ics files to s3://${S3_BUCKET}/`;
+  const summary = `Wrote ${filesWritten} .ics files to s3://${S3_BUCKET}/calendars/`;
   console.log(summary);
   return { statusCode: 200, body: summary };
 }

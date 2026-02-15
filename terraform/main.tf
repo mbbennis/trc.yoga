@@ -147,11 +147,8 @@ data "aws_iam_policy_document" "lambda_assume" {
 
 data "aws_iam_policy_document" "lambda_permissions" {
   statement {
-    actions   = ["dynamodb:Query"]
-    resources = [
-      aws_dynamodb_table.yoga_events.arn,
-      "${aws_dynamodb_table.yoga_events.arn}/index/*",
-    ]
+    actions   = ["dynamodb:GetItem"]
+    resources = [aws_dynamodb_table.yoga_events.arn]
   }
   statement {
     actions   = ["sqs:SendMessage", "sqs:SendMessageBatch"]
@@ -258,6 +255,7 @@ module "website" {
   domain_name        = var.domain_name
   bucket_name        = "trc.yoga"
   cloudflare_zone_id = var.cloudflare_zone_id
+  error_object_key   = "index.html"
 }
 
 # ---------- Calendar Lambda IAM ----------

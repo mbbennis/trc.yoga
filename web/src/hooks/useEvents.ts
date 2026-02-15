@@ -8,7 +8,7 @@ function startOfToday(): Date {
   return new Date(now.getFullYear(), now.getMonth(), now.getDate());
 }
 
-export function useEvents(selectedAbbrs: string[]) {
+export function useEvents(selectedAbbrs: string[], category: string = "yoga") {
   const [allEvents, setAllEvents] = useState<YogaEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -21,7 +21,7 @@ export function useEvents(selectedAbbrs: string[]) {
       try {
         const results = await Promise.all(
           LOCATIONS.map(async (loc) => {
-            const res = await fetch(`/${loc.abbr}.ics`);
+            const res = await fetch(`/calendars/${category}/${loc.abbr}.ics`);
             if (!res.ok) throw new Error(`Failed to fetch ${loc.abbr}.ics: ${res.status}`);
             const text = await res.text();
             const vevents = extractVEvents(text);
@@ -69,7 +69,7 @@ export function useEvents(selectedAbbrs: string[]) {
 
     fetchAll();
     return () => { cancelled = true; };
-  }, []);
+  }, [category]);
 
   // Filter by selected locations in memory
   const events = useMemo(

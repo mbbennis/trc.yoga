@@ -1,8 +1,9 @@
 /**
- * Ingest Lambda — fetches iCal feeds from configured sources, filters for yoga
- * events newer than the latest in DynamoDB, and sends them to SQS for enrichment.
+ * Ingest Lambda — fetches iCal feeds from configured sources, checks for
+ * new/changed events via content hash, and sends them to SQS for enrichment.
  */
-import { DynamoDBClient, QueryCommand } from "@aws-sdk/client-dynamodb";
+import { createHash } from "node:crypto";
+import { DynamoDBClient, GetItemCommand } from "@aws-sdk/client-dynamodb";
 import { SQSClient, SendMessageBatchCommand } from "@aws-sdk/client-sqs";
 
 const dynamo = new DynamoDBClient({});
@@ -59,23 +60,6 @@ function unfold(vevent: string): string[] {
 }
 
 /**
- * Check if a VEVENT block contains the word "yoga" (case-insensitive)
- * in its SUMMARY, DESCRIPTION, or LOCATION fields.
- */
-export function isYogaEvent(vevent: string): boolean {
-  const pattern = /^(SUMMARY|DESCRIPTION|LOCATION)[;:](.*)$/im;
-  const unfolded = unfold(vevent);
-
-  for (const line of unfolded) {
-    const match = line.match(pattern);
-    if (match && match[2].toLowerCase().includes("yoga")) {
-      return true;
-    }
-  }
-  return false;
-}
-
-/**
  * Parse a single iCal field value from a VEVENT block.
  * Handles unfolding and property parameters (e.g. DTSTART;VALUE=DATE:20240101).
  * Returns undefined if the field is not found.
@@ -97,6 +81,13 @@ export function parseVEventField(vevent: string, field: string): string | undefi
     }
   }
   return undefined;
+}
+
+/**
+ * Compute a SHA-256 hex digest of the raw VEVENT string for change detection.
+ */
+export function computeContentHash(vevent: string): string {
+  return createHash("sha256").update(vevent).digest("hex");
 }
 
 async function fetchIcal(url: string): Promise<string> {
@@ -132,48 +123,43 @@ export async function handler(): Promise<{ statusCode: number; body: string }> {
     }
 
     const vevents = extractVEvents(result.value);
-    const yoga = vevents.filter(isYogaEvent);
-    console.log(`${abbrev}: ${vevents.length} events total, ${yoga.length} yoga events`);
+    console.log(`${abbrev}: ${vevents.length} events total`);
 
-    // Find the most recent dtstart already stored for this location
-    const cutoffResult = await dynamo.send(
-      new QueryCommand({
-        TableName: DYNAMODB_TABLE,
-        IndexName: "locationName-dtstart-index",
-        KeyConditionExpression: "locationName = :name",
-        ExpressionAttributeValues: { ":name": { S: name } },
-        ScanIndexForward: false,
-        Limit: 1,
-        ProjectionExpression: "dtstart",
-      })
-    );
-    const cutoff = cutoffResult.Items?.[0]?.dtstart?.S;
-    if (cutoff) {
-      console.log(`${abbrev}: cutoff dtstart = ${cutoff}`);
-    } else {
-      console.log(`${abbrev}: no existing events, writing all`);
+    // Check each event against DynamoDB by content hash
+    const changedEvents: { vevent: string; contentHash: string }[] = [];
+    for (const vevent of vevents) {
+      const uid = parseVEventField(vevent, "UID");
+      const dtstart = parseVEventField(vevent, "DTSTART");
+      if (!uid || !dtstart) continue;
+
+      const contentHash = computeContentHash(vevent);
+
+      const existing = await dynamo.send(
+        new GetItemCommand({
+          TableName: DYNAMODB_TABLE,
+          Key: { uid: { S: uid }, dtstart: { S: dtstart } },
+          ProjectionExpression: "contentHash",
+        })
+      );
+
+      if (!existing.Item || existing.Item.contentHash?.S !== contentHash) {
+        changedEvents.push({ vevent, contentHash });
+      }
     }
 
-    // Only keep events newer than the cutoff
-    const newYoga = cutoff
-      ? yoga.filter((vevent) => {
-          const dtstart = parseVEventField(vevent, "DTSTART");
-          return dtstart !== undefined && dtstart > cutoff;
-        })
-      : yoga;
-
-    console.log(`${abbrev}: ${newYoga.length} new events to send to SQS`);
+    console.log(`${abbrev}: ${changedEvents.length} new/changed events to send to SQS`);
 
     // SendMessageBatch in chunks of 10
-    for (let j = 0; j < newYoga.length; j += 10) {
-      const batch = newYoga.slice(j, j + 10);
-      const entries = batch.map((vevent, idx) => {
+    for (let j = 0; j < changedEvents.length; j += 10) {
+      const batch = changedEvents.slice(j, j + 10);
+      const entries = batch.map(({ vevent, contentHash }, idx) => {
         const uid = parseVEventField(vevent, "UID") ?? "unknown";
         const dtstart = parseVEventField(vevent, "DTSTART") ?? "unknown";
 
         const messageBody: Record<string, string> = {
           uid,
           dtstart,
+          contentHash,
           location: abbrev,
           locationName: name,
           rawVevent: vevent,
@@ -206,10 +192,10 @@ export async function handler(): Promise<{ statusCode: number; body: string }> {
     }
   }
 
-  console.log(`Sent ${totalSent} yoga events to SQS`);
+  console.log(`Sent ${totalSent} events to SQS`);
 
   return {
     statusCode: 200,
-    body: `Sent ${totalSent} yoga events to SQS`,
+    body: `Sent ${totalSent} events to SQS`,
   };
 }

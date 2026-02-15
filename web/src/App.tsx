@@ -20,12 +20,12 @@ function writeCookie(abbrs: string[]) {
   document.cookie = `${COOKIE_NAME}=${encodeURIComponent(abbrs.join(','))};expires=${expires};path=/;SameSite=Lax`;
 }
 
-function App() {
+function EventPage({ title, category, otherLabel, otherHref }: { title: string; category: string; otherLabel: string; otherHref: string }) {
   const [selected, setSelected] = useState<string[]>(
     () => readCookie() ?? allAbbrs,
   );
 
-  const { events, loading, error } = useEvents(selected);
+  const { events, loading, error } = useEvents(selected, category);
 
   function toggle(abbr: string) {
     setSelected((prev) => {
@@ -37,12 +37,23 @@ function App() {
 
   return (
     <div className="container">
-      <h1><img src="/favicon-32x32.png" alt="" width="24" height="24" />TRC Yoga</h1>
+      <h1><img src="/favicon-32x32.png" alt="" width="24" height="24" />{title}</h1>
+      <nav className="page-nav"><a href={otherHref}>{otherLabel}</a></nav>
       <LocationChips selected={selected} onToggle={toggle} />
-      <CopyLinkButton selected={selected} />
+      <CopyLinkButton selected={selected} category={category} />
       <EventList events={events} loading={loading} error={error} />
     </div>
   );
+}
+
+function App() {
+  const path = window.location.pathname;
+
+  if (path === '/fitness' || path === '/fitness/') {
+    return <EventPage title="TRC Fitness" category="fitness" otherLabel="View Yoga classes" otherHref="/" />;
+  }
+
+  return <EventPage title="TRC Yoga" category="yoga" otherLabel="View Fitness classes" otherHref="/fitness" />;
 }
 
 export default App;

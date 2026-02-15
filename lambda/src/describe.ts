@@ -13,6 +13,41 @@ const bedrock = new BedrockRuntimeClient({ region: "us-east-1" });
 const DYNAMODB_TABLE = process.env.DYNAMODB_TABLE!;
 const MODEL_ID = "amazon.nova-micro-v1:0";
 
+/**
+ * Unfold iCal continuation lines (lines starting with space/tab are continuations).
+ */
+function unfold(vevent: string): string[] {
+  const lines = vevent.split(/\r?\n/);
+  const unfolded: string[] = [];
+  for (const line of lines) {
+    if (line.startsWith(" ") || line.startsWith("\t")) {
+      if (unfolded.length > 0) {
+        unfolded[unfolded.length - 1] += line.slice(1);
+      }
+    } else {
+      unfolded.push(line);
+    }
+  }
+  return unfolded;
+}
+
+/**
+ * Classify a VEVENT as "yoga" or "fitness" based on whether the word "yoga"
+ * appears (case-insensitive) in its SUMMARY, DESCRIPTION, or LOCATION fields.
+ */
+export function classifyEvent(vevent: string): "yoga" | "fitness" {
+  const pattern = /^(SUMMARY|DESCRIPTION|LOCATION)[;:](.*)$/im;
+  const unfolded = unfold(vevent);
+
+  for (const line of unfolded) {
+    const match = line.match(pattern);
+    if (match && match[2].toLowerCase().includes("yoga")) {
+      return "yoga";
+    }
+  }
+  return "fitness";
+}
+
 export function buildPrompt(summary: string, description: string): string {
   return [
     "Rewrite the following yoga class description into a concise, one-to-two sentence summary.",
@@ -54,6 +89,7 @@ export async function handler(event: SQSEvent): Promise<SQSBatchResponse> {
     const msg = JSON.parse(record.body) as {
       uid: string;
       dtstart: string;
+      contentHash?: string;
       location: string;
       locationName: string;
       rawVevent: string;
@@ -86,6 +122,13 @@ export async function handler(event: SQSEvent): Promise<SQSBatchResponse> {
         url: { S: msg.url },
         ttl: { N: String(ttl) },
       };
+
+      const category = classifyEvent(msg.rawVevent);
+      item.category = { S: category };
+
+      if (msg.contentHash) {
+        item.contentHash = { S: msg.contentHash };
+      }
 
       for (const field of ["summary", "description", "dtend"] as const) {
         if (msg[field]) {

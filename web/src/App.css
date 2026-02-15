@@ -37,6 +37,22 @@ h1 {
   margin-bottom: 12px;
 }
 
+/* Page nav */
+.page-nav {
+  margin-bottom: 12px;
+  font-size: 0.875rem;
+}
+
+.page-nav a {
+  color: #3b82f6;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.page-nav a:hover {
+  text-decoration: underline;
+}
+
 /* Chips */
 .chips {
   display: flex;
