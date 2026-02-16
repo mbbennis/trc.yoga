@@ -56,7 +56,7 @@ variable "aggregator_schedule" {
 
 variable "calendar_schedule" {
   description = "EventBridge schedule for the calendar Lambda"
-  default     = "cron(10 * * * ? *)"
+  default     = "cron(5,35 * * * ? *)"
 }
 
 variable "capacity_schedule" {
