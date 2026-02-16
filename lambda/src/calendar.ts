@@ -232,7 +232,7 @@ export async function handler(): Promise<{ statusCode: number; body: string }> {
         return vevent;
       });
 
-      const icsContent = buildIcalFile(vevents, calName);
+      const icsContent = buildIcalFile(vevents, category === "yoga" ? "TRC Yoga" : "TRC Fitness");
       const key = `calendars/${category}/${subset.join("_")}.ics`;
 
       await s3.send(
