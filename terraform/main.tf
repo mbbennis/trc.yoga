@@ -449,6 +449,48 @@ resource "aws_cloudwatch_metric_alarm" "sqs_queue_depth" {
   ok_actions    = [aws_sns_topic.yoga_alarms.arn]
 }
 
+# ---------- CloudWatch Dashboard ----------
+
+resource "aws_cloudwatch_dashboard" "main" {
+  dashboard_name = "trc-yoga"
+  dashboard_body = jsonencode({
+    widgets = [
+      {
+        type   = "metric"
+        x      = 0
+        y      = 0
+        width  = 12
+        height = 6
+        properties = {
+          title  = "SQS Messages / Day"
+          region = var.aws_region
+          stat   = "Sum"
+          period = 86400
+          metrics = [
+            ["AWS/SQS", "NumberOfMessagesSent", "QueueName", aws_sqs_queue.yoga_events.name]
+          ]
+        }
+      },
+      {
+        type   = "metric"
+        x      = 12
+        y      = 0
+        width  = 12
+        height = 6
+        properties = {
+          title  = "DynamoDB Table Size"
+          region = var.aws_region
+          stat   = "Average"
+          period = 21600
+          metrics = [
+            ["AWS/DynamoDB", "ItemCount", "TableName", var.dynamodb_table_name]
+          ]
+        }
+      }
+    ]
+  })
+}
+
 # ---------- Outputs ----------
 
 output "lambda_function_name" {
