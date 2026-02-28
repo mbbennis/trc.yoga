@@ -84,6 +84,21 @@ export function parseVEventField(vevent: string, field: string): string | undefi
 }
 
 /**
+ * Convert an iCal datetime string (e.g. "20260326T230000Z") to ISO 8601
+ * (e.g. "2026-03-26T23:00:00.000Z"). Handles both with and without trailing Z.
+ */
+export function icalToIso(ical: string): string {
+  const s = ical.replace(/Z$/, "");
+  const year = s.slice(0, 4);
+  const month = s.slice(4, 6);
+  const day = s.slice(6, 8);
+  const hour = s.slice(9, 11);
+  const minute = s.slice(11, 13);
+  const second = s.slice(13, 15);
+  return `${year}-${month}-${day}T${hour}:${minute}:${second}.000Z`;
+}
+
+/**
  * Compute a SHA-256 hex digest of the raw VEVENT string for change detection.
  * Strips volatile fields that change on every fetch but don't represent
  * meaningful changes: DTSTAMP (server timestamp) and URL (contains a random
@@ -133,24 +148,25 @@ export async function handler(): Promise<{ statusCode: number; body: string }> {
     console.log(`${abbrev}: ${vevents.length} events total`);
 
     // Check each event against DynamoDB by content hash
-    const changedEvents: { vevent: string; contentHash: string }[] = [];
+    const changedEvents: { vevent: string; contentHash: string; startTime: string }[] = [];
     for (const vevent of vevents) {
       const uid = parseVEventField(vevent, "UID");
       const dtstart = parseVEventField(vevent, "DTSTART");
       if (!uid || !dtstart) continue;
 
+      const startTime = icalToIso(dtstart);
       const contentHash = computeContentHash(vevent);
 
       const existing = await dynamo.send(
         new GetItemCommand({
           TableName: DYNAMODB_TABLE,
-          Key: { uid: { S: uid }, dtstart: { S: dtstart } },
+          Key: { uid: { S: uid }, startTime: { S: startTime } },
           ProjectionExpression: "contentHash",
         })
       );
 
       if (!existing.Item || existing.Item.contentHash?.S !== contentHash) {
-        changedEvents.push({ vevent, contentHash });
+        changedEvents.push({ vevent, contentHash, startTime });
       }
     }
 
@@ -159,13 +175,12 @@ export async function handler(): Promise<{ statusCode: number; body: string }> {
     // SendMessageBatch in chunks of 10
     for (let j = 0; j < changedEvents.length; j += 10) {
       const batch = changedEvents.slice(j, j + 10);
-      const entries = batch.map(({ vevent, contentHash }, idx) => {
+      const entries = batch.map(({ vevent, contentHash, startTime }, idx) => {
         const uid = parseVEventField(vevent, "UID") ?? "unknown";
-        const dtstart = parseVEventField(vevent, "DTSTART") ?? "unknown";
 
         const messageBody: Record<string, string> = {
           uid,
-          dtstart,
+          startTime,
           contentHash,
           location: abbrev,
           locationName: name,
@@ -175,11 +190,18 @@ export async function handler(): Promise<{ statusCode: number; body: string }> {
         };
 
         // Add optional fields if present
-        for (const field of ["SUMMARY", "DESCRIPTION", "DTEND"]) {
-          const value = parseVEventField(vevent, field);
-          if (value) {
-            messageBody[field.toLowerCase()] = value;
-          }
+        const summaryVal = parseVEventField(vevent, "SUMMARY");
+        if (summaryVal) {
+          messageBody.title = summaryVal;
+        }
+        const descVal = parseVEventField(vevent, "DESCRIPTION");
+        if (descVal) {
+          messageBody.description = descVal;
+        }
+
+        const dtend = parseVEventField(vevent, "DTEND");
+        if (dtend) {
+          messageBody.endTime = icalToIso(dtend);
         }
 
         return {

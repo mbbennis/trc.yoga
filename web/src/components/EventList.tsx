@@ -10,7 +10,7 @@ interface Props {
 function groupByDate(events: YogaEvent[]): Map<string, YogaEvent[]> {
   const groups = new Map<string, YogaEvent[]>();
   for (const event of events) {
-    const key = event.dtstart.toLocaleDateString();
+    const key = event.startTime.toLocaleDateString();
     const list = groups.get(key) ?? [];
     list.push(event);
     groups.set(key, list);
@@ -28,7 +28,7 @@ export default function EventList({ events, loading, error }: Props) {
   return (
     <div className="event-list">
       {Array.from(groups.entries()).map(([dateStr, dayEvents]) => (
-        <DayGroup key={dateStr} date={dayEvents[0].dtstart} events={dayEvents} />
+        <DayGroup key={dateStr} date={dayEvents[0].startTime} events={dayEvents} />
       ))}
     </div>
   );

@@ -92,58 +92,57 @@ export async function handler(event: SQSEvent): Promise<SQSBatchResponse> {
   for (const record of event.Records) {
     const msg = JSON.parse(record.body) as {
       uid: string;
-      dtstart: string;
+      startTime: string;
+      endTime?: string;
+      title?: string;
+      description?: string;
       contentHash?: string;
       location: string;
       locationName: string;
-      rawVevent: string;
       address: string;
       url: string;
-      summary?: string;
-      description?: string;
-      dtend?: string;
+      rawVevent: string;
     };
 
     try {
       let improvedDescription: string | undefined;
       if (msg.description) {
-        improvedDescription = await improveDescription(msg.summary ?? "", msg.description);
-        console.log(`Described ${msg.uid} (${msg.dtstart}): ${improvedDescription.slice(0, 80)}...`);
+        improvedDescription = await improveDescription(msg.title ?? "", msg.description);
+        console.log(`Described ${msg.uid} (${msg.startTime}): ${improvedDescription.slice(0, 80)}...`);
       } else {
-        console.log(`No description for ${msg.uid} (${msg.dtstart}), skipping Bedrock`);
+        console.log(`No description for ${msg.uid} (${msg.startTime}), skipping Bedrock`);
       }
 
       // TTL: 1 year from now (epoch seconds)
       const ttl = Math.floor(Date.now() / 1000) + 365 * 24 * 60 * 60;
-
-      const item: Record<string, { S: string } | { N: string }> = {
-        uid: { S: msg.uid },
-        dtstart: { S: msg.dtstart },
-        location: { S: msg.location },
-        locationName: { S: msg.locationName },
-        rawVevent: { S: msg.rawVevent },
-        address: { S: msg.address },
-        url: { S: msg.url },
-        ttl: { N: String(ttl) },
-        lastModified: { S: new Date().toISOString() },
-      };
+      const now = new Date().toISOString();
 
       const category = classifyEvent(msg.rawVevent);
-      item.category = { S: category };
 
-      if (msg.contentHash) {
-        item.contentHash = { S: msg.contentHash };
-      }
+      const item: Record<string, { S: string } | { N: string }> = {
+        // Keys
+        uid: { S: msg.uid },
+        startTime: { S: msg.startTime },
+        // Event details
+        category: { S: category },
+        // Location
+        location: { S: msg.location },
+        locationName: { S: msg.locationName },
+        address: { S: msg.address },
+        url: { S: msg.url },
+        // Raw source
+        rawVevent: { S: msg.rawVevent },
+        // Metadata
+        ttl: { N: String(ttl) },
+        createdAt: { S: now },
+        lastModified: { S: now },
+      };
 
-      for (const field of ["summary", "description", "dtend"] as const) {
-        if (msg[field]) {
-          item[field] = { S: msg[field] };
-        }
-      }
-
-      if (improvedDescription) {
-        item.improvedDescription = { S: improvedDescription };
-      }
+      if (msg.endTime) item.endTime = { S: msg.endTime };
+      if (msg.title) item.title = { S: msg.title };
+      if (msg.description) item.description = { S: msg.description };
+      if (improvedDescription) item.improvedDescription = { S: improvedDescription };
+      if (msg.contentHash) item.contentHash = { S: msg.contentHash };
 
       await dynamo.send(
         new PutItemCommand({
@@ -152,7 +151,7 @@ export async function handler(event: SQSEvent): Promise<SQSBatchResponse> {
         })
       );
     } catch (err) {
-      console.error(`Error processing ${msg.uid} (${msg.dtstart}):`, err);
+      console.error(`Error processing ${msg.uid} (${msg.startTime}):`, err);
       batchItemFailures.push({ itemIdentifier: record.messageId });
     }
   }

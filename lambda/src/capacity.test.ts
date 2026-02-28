@@ -134,9 +134,7 @@ describe("parseDatesData", () => {
     const data = parseDatesData(html);
     expect(data).toBeDefined();
     expect(data!["2026-03-17"].sold_out).toBe(false);
-    expect(data!["2026-03-17"].is_available).toBe(true);
     expect(data!["2026-03-19"].sold_out).toBe(true);
-    expect(data!["2026-03-19"].is_available).toBe(false);
   });
 
   it("returns undefined when dates_data is not present", () => {
@@ -153,7 +151,7 @@ describe("parseDatesData", () => {
     const html = `var dates_data  =  {"2026-01-01":{"sold_out":false,"session_number":1,"is_available":true,"specific_datetimes":[]}};`;
     const data = parseDatesData(html);
     expect(data).toBeDefined();
-    expect(data!["2026-01-01"].is_available).toBe(true);
+    expect(data!["2026-01-01"].sold_out).toBe(false);
   });
 
   it("handles empty dates_data object", () => {
@@ -168,47 +166,42 @@ describe("parseDatesData", () => {
 describe("utcToLocalDate", () => {
   it("converts UTC afternoon to same Eastern date (EST)", () => {
     // 2026-01-15T14:00:00Z → 9:00 AM ET (EST, UTC-5) → 2026-01-15
-    expect(utcToLocalDate("20260115T140000Z")).toBe("2026-01-15");
+    expect(utcToLocalDate("2026-01-15T14:00:00.000Z")).toBe("2026-01-15");
   });
 
   it("converts UTC midnight to previous Eastern date (EST)", () => {
     // 2026-01-16T00:00:00Z → 7:00 PM ET Jan 15 (EST, UTC-5)
-    expect(utcToLocalDate("20260116T000000Z")).toBe("2026-01-15");
+    expect(utcToLocalDate("2026-01-16T00:00:00.000Z")).toBe("2026-01-15");
   });
 
   it("converts UTC early morning to previous Eastern date (EST)", () => {
     // 2026-01-16T04:00:00Z → 11:00 PM ET Jan 15 (EST, UTC-5)
-    expect(utcToLocalDate("20260116T040000Z")).toBe("2026-01-15");
+    expect(utcToLocalDate("2026-01-16T04:00:00.000Z")).toBe("2026-01-15");
   });
 
   it("converts UTC 05:00 to same Eastern date (EST)", () => {
     // 2026-01-16T05:00:00Z → 12:00 AM ET Jan 16 (EST, UTC-5)
-    expect(utcToLocalDate("20260116T050000Z")).toBe("2026-01-16");
+    expect(utcToLocalDate("2026-01-16T05:00:00.000Z")).toBe("2026-01-16");
   });
 
   it("handles EDT (summer time, UTC-4)", () => {
     // 2026-07-15T14:00:00Z → 10:00 AM ET (EDT, UTC-4) → 2026-07-15
-    expect(utcToLocalDate("20260715T140000Z")).toBe("2026-07-15");
+    expect(utcToLocalDate("2026-07-15T14:00:00.000Z")).toBe("2026-07-15");
   });
 
   it("handles DST spring-forward boundary (March 8, 2026)", () => {
     // DST starts March 8, 2026 at 2:00 AM ET
     // 2026-03-08T06:00:00Z → 1:00 AM EST (before spring-forward) → 2026-03-08
-    expect(utcToLocalDate("20260308T060000Z")).toBe("2026-03-08");
+    expect(utcToLocalDate("2026-03-08T06:00:00.000Z")).toBe("2026-03-08");
     // 2026-03-08T07:00:00Z → 3:00 AM EDT (after spring-forward) → 2026-03-08
-    expect(utcToLocalDate("20260308T070000Z")).toBe("2026-03-08");
+    expect(utcToLocalDate("2026-03-08T07:00:00.000Z")).toBe("2026-03-08");
   });
 
   it("handles DST fall-back boundary (November 1, 2026)", () => {
     // DST ends November 1, 2026 at 2:00 AM ET
     // 2026-11-01T05:00:00Z → 1:00 AM EDT (before fall-back) → 2026-11-01
-    expect(utcToLocalDate("20261101T050000Z")).toBe("2026-11-01");
+    expect(utcToLocalDate("2026-11-01T05:00:00.000Z")).toBe("2026-11-01");
     // 2026-11-01T06:00:00Z → 1:00 AM EST (after fall-back) → 2026-11-01
-    expect(utcToLocalDate("20261101T060000Z")).toBe("2026-11-01");
-  });
-
-  it("handles dtstart without trailing Z", () => {
-    // Should still parse correctly
-    expect(utcToLocalDate("20260317T140000")).toBe("2026-03-17");
+    expect(utcToLocalDate("2026-11-01T06:00:00.000Z")).toBe("2026-11-01");
   });
 });

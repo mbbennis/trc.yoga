@@ -31,9 +31,9 @@ export default function EventCard({ event }: Props) {
       <div className="event-card-header">
         <div className="event-card-info">
           <div className="event-time">
-            {formatTime(event.dtstart)} – {formatTime(event.dtend)}
+            {formatTime(event.startTime)} – {formatTime(event.endTime)}
           </div>
-          <div className="event-summary">{event.summary}</div>
+          <div className="event-summary">{event.title}</div>
         </div>
         <div className="event-badges">
           {event.soldOut && <span className="event-badge sold-out-badge">Class Full</span>}

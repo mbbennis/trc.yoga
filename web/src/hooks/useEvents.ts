@@ -30,18 +30,18 @@ export function useEvents(selectedAbbrs: string[], category: string = "yoga") {
               const soldOutRaw = parseField(vevent, 'X-SOLD-OUT');
               return {
                 uid: parseField(vevent, 'UID') ?? '',
-                summary: parseField(vevent, 'SUMMARY') ?? '',
+                title: parseField(vevent, 'SUMMARY') ?? '',
                 description: parseField(vevent, 'DESCRIPTION')
                   ?.replace(/\\n/g, '\n')
                   .replace(/\\,/g, ',')
                   .replace(/\\;/g, ';')
                   .replace(/\\\\/g, '\\') ?? '',
-                dtstart: parseIcalDate(parseField(vevent, 'DTSTART') ?? ''),
-                dtend: parseIcalDate(parseField(vevent, 'DTEND') ?? parseField(vevent, 'DTSTART') ?? ''),
+                startTime: parseIcalDate(parseField(vevent, 'DTSTART') ?? ''),
+                endTime: parseIcalDate(parseField(vevent, 'DTEND') ?? parseField(vevent, 'DTSTART') ?? ''),
                 url: parseField(vevent, 'URL') || undefined,
                 locationAbbr: loc.abbr,
                 soldOut: soldOutRaw === 'TRUE' ? true : soldOutRaw === 'FALSE' ? false : undefined,
-                capacityCheckedAt: parseField(vevent, 'X-CAPACITY-CHECKED-AT') || undefined,
+                lastModified: parseField(vevent, 'X-LAST-MODIFIED') || undefined,
               };
             });
           }),
@@ -53,8 +53,8 @@ export function useEvents(selectedAbbrs: string[], category: string = "yoga") {
         const twoWeeks = new Date(today.getTime() + 14 * 24 * 60 * 60 * 1000);
         const merged = results
           .flat()
-          .filter((e) => e.dtend > new Date() && e.dtstart < twoWeeks)
-          .sort((a, b) => a.dtstart.getTime() - b.dtstart.getTime());
+          .filter((e) => e.endTime > new Date() && e.startTime < twoWeeks)
+          .sort((a, b) => a.startTime.getTime() - b.startTime.getTime());
 
         setAllEvents(merged);
         setError(null);

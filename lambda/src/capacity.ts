@@ -1,11 +1,12 @@
 /**
  * Capacity Lambda — queries DynamoDB for upcoming events, fetches each offering's
- * RockGymPro page to check availability, and updates events with sold-out status
- * and a capacityCheckedAt timestamp.
+ * RockGymPro page to check availability, and updates events with sold-out status.
  */
 import { DynamoDBClient, QueryCommand, UpdateItemCommand } from "@aws-sdk/client-dynamodb";
+import { EventBridgeClient, PutEventsCommand } from "@aws-sdk/client-eventbridge";
 
 const dynamo = new DynamoDBClient({});
+const eventBridge = new EventBridgeClient({});
 
 const DYNAMODB_TABLE = process.env.DYNAMODB_TABLE!;
 const ICAL_SOURCES: Record<string, { url: string; name: string }> = JSON.parse(process.env.ICAL_SOURCES ?? "{}");
@@ -13,15 +14,15 @@ const HTTP_DELAY_MS = Number(process.env.HTTP_DELAY_MS ?? "1000");
 
 interface EventItem {
   uid: string;
-  dtstart: string;
+  startTime: string;
   locationName: string;
   rawVevent: string;
+  soldOut?: boolean;
 }
 
 interface DateInfo {
   sold_out: boolean;
   session_number: number;
-  is_available: boolean;
   specific_datetimes: string[];
 }
 
@@ -86,16 +87,9 @@ export function parseDatesData(html: string): Record<string, DateInfo> | undefin
   }
 }
 
-export function utcToLocalDate(dtstart: string, timeZone = "America/New_York"): string {
-  // Parse "20260317T140000Z" format
-  const year = parseInt(dtstart.slice(0, 4), 10);
-  const month = parseInt(dtstart.slice(4, 6), 10) - 1;
-  const day = parseInt(dtstart.slice(6, 8), 10);
-  const hour = parseInt(dtstart.slice(9, 11), 10);
-  const minute = parseInt(dtstart.slice(11, 13), 10);
-  const second = parseInt(dtstart.slice(13, 15), 10);
-
-  const utcDate = new Date(Date.UTC(year, month, day, hour, minute, second));
+export function utcToLocalDate(startTime: string, timeZone = "America/New_York"): string {
+  // Parse ISO 8601 format "2026-03-17T14:00:00.000Z"
+  const utcDate = new Date(startTime);
 
   const formatter = new Intl.DateTimeFormat("en-CA", {
     timeZone,
@@ -117,17 +111,8 @@ async function queryUpcomingEvents(locationName: string): Promise<EventItem[]> {
   const now = new Date();
   const threeWeeksLater = new Date(now.getTime() + 21 * 24 * 60 * 60 * 1000);
 
-  const nowStr =
-    now.getUTCFullYear().toString() +
-    String(now.getUTCMonth() + 1).padStart(2, "0") +
-    String(now.getUTCDate()).padStart(2, "0") +
-    "T000000";
-
-  const endStr =
-    threeWeeksLater.getUTCFullYear().toString() +
-    String(threeWeeksLater.getUTCMonth() + 1).padStart(2, "0") +
-    String(threeWeeksLater.getUTCDate()).padStart(2, "0") +
-    "T235959";
+  const nowStr = now.toISOString();
+  const endStr = threeWeeksLater.toISOString();
 
   const items: EventItem[] = [];
   let lastKey: Record<string, { S: string }> | undefined;
@@ -136,8 +121,8 @@ async function queryUpcomingEvents(locationName: string): Promise<EventItem[]> {
     const result = await dynamo.send(
       new QueryCommand({
         TableName: DYNAMODB_TABLE,
-        IndexName: "locationName-dtstart-index",
-        KeyConditionExpression: "locationName = :name AND dtstart BETWEEN :start AND :end",
+        IndexName: "locationName-startTime-index",
+        KeyConditionExpression: "locationName = :name AND startTime BETWEEN :start AND :end",
         ExpressionAttributeValues: {
           ":name": { S: locationName },
           ":start": { S: nowStr },
@@ -150,9 +135,10 @@ async function queryUpcomingEvents(locationName: string): Promise<EventItem[]> {
     for (const item of result.Items ?? []) {
       items.push({
         uid: item.uid?.S ?? "",
-        dtstart: item.dtstart?.S ?? "",
+        startTime: item.startTime?.S ?? "",
         locationName: item.locationName?.S ?? "",
         rawVevent: item.rawVevent?.S ?? "",
+        soldOut: item.soldOut?.BOOL,
       });
     }
 
@@ -214,6 +200,7 @@ export async function handler(): Promise<{ statusCode: number; body: string }> {
 
   // 3. Fetch each offering page and update events
   let updatedCount = 0;
+  let changedCount = 0;
   let errorCount = 0;
   let isFirst = true;
 
@@ -250,9 +237,14 @@ export async function handler(): Promise<{ statusCode: number; body: string }> {
 
     // 4. Update each event's capacity info
     for (const event of events) {
-      const localDate = utcToLocalDate(event.dtstart);
+      const localDate = utcToLocalDate(event.startTime);
       const dateInfo = datesData[localDate];
       if (!dateInfo) continue;
+
+      const soldOutChanged = event.soldOut !== dateInfo.sold_out;
+      if (soldOutChanged) {
+        changedCount++;
+      }
 
       try {
         await dynamo.send(
@@ -260,12 +252,11 @@ export async function handler(): Promise<{ statusCode: number; body: string }> {
             TableName: DYNAMODB_TABLE,
             Key: {
               uid: { S: event.uid },
-              dtstart: { S: event.dtstart },
+              startTime: { S: event.startTime },
             },
-            UpdateExpression: "SET soldOut = :so, isAvailable = :ia, capacityCheckedAt = :ts",
+            UpdateExpression: "SET soldOut = :so, lastModified = :ts",
             ExpressionAttributeValues: {
               ":so": { BOOL: dateInfo.sold_out },
-              ":ia": { BOOL: dateInfo.is_available },
               ":ts": { S: new Date().toISOString() },
             },
           })
@@ -278,7 +269,28 @@ export async function handler(): Promise<{ statusCode: number; body: string }> {
     }
   }
 
-  const summary = `Updated ${updatedCount} events, ${errorCount} errors`;
+  // 5. If any soldOut status changed, emit EventBridge event to trigger calendar regeneration
+  if (changedCount > 0) {
+    console.log(`${changedCount} events changed soldOut status, emitting calendar-update event`);
+    try {
+      await eventBridge.send(
+        new PutEventsCommand({
+          Entries: [
+            {
+              Source: "trc-yoga.capacity",
+              DetailType: "CapacityChanged",
+              Detail: JSON.stringify({ changedCount }),
+            },
+          ],
+        })
+      );
+      console.log("EventBridge event emitted successfully");
+    } catch (err) {
+      console.error("Failed to emit EventBridge event:", err);
+    }
+  }
+
+  const summary = `Updated ${updatedCount} events (${changedCount} changed), ${errorCount} errors`;
   console.log(summary);
   return { statusCode: 200, body: summary };
 }

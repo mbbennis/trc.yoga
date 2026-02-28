@@ -71,8 +71,8 @@ function App() {
         </a>
       </nav>
       <LocationChips selected={selected} onToggle={toggle} />
-      <CopyLinkButton selected={selected} category={category} />
       <EventList events={events} loading={loading} error={error} />
+      <CopyLinkButton selected={selected} category={category} />
     </div>
   );
 }

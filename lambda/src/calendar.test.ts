@@ -238,24 +238,24 @@ describe("X-SOLD-OUT in VEVENT", () => {
   });
 });
 
-// --------------- X-CAPACITY-CHECKED-AT ---------------
+// --------------- X-LAST-MODIFIED ---------------
 
-describe("X-CAPACITY-CHECKED-AT in VEVENT", () => {
-  it("adds X-CAPACITY-CHECKED-AT with the ISO timestamp value", () => {
+describe("X-LAST-MODIFIED in VEVENT", () => {
+  it("adds X-LAST-MODIFIED with the ISO timestamp value", () => {
     const raw = "BEGIN:VEVENT\r\nSUMMARY:Yoga\r\nEND:VEVENT";
     const timestamp = "2026-02-14T12:30:00.000Z";
-    const result = replaceVeventField(raw, "X-CAPACITY-CHECKED-AT", timestamp);
-    expect(result).toContain("X-CAPACITY-CHECKED-AT:2026-02-14T12:30:00.000Z");
+    const result = replaceVeventField(raw, "X-LAST-MODIFIED", timestamp);
+    expect(result).toContain("X-LAST-MODIFIED:2026-02-14T12:30:00.000Z");
   });
 
-  it("is omitted when capacityCheckedAt is undefined", () => {
+  it("is omitted when lastModified is undefined", () => {
     const raw = "BEGIN:VEVENT\r\nSUMMARY:Yoga\r\nEND:VEVENT";
-    const capacityCheckedAt: string | undefined = undefined;
+    const lastModified: string | undefined = undefined;
     let vevent = raw;
-    if (capacityCheckedAt) {
-      vevent = replaceVeventField(vevent, "X-CAPACITY-CHECKED-AT", capacityCheckedAt);
+    if (lastModified) {
+      vevent = replaceVeventField(vevent, "X-LAST-MODIFIED", lastModified);
     }
-    expect(vevent).not.toContain("X-CAPACITY-CHECKED-AT");
+    expect(vevent).not.toContain("X-LAST-MODIFIED");
   });
 });
 

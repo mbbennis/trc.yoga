@@ -14,16 +14,18 @@ export default function CopyLinkButton({ selected, category = "yoga" }: Props) {
     const full = `${window.location.origin}${url}`;
     await navigator.clipboard.writeText(full);
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    setTimeout(() => setCopied(false), 1200);
   }
 
   return (
-    <button
-      className="copy-btn"
-      disabled={selected.length === 0}
-      onClick={handleCopy}
-    >
-      {copied ? 'Copied!' : 'Copy Calendar Link'}
-    </button>
+    <div className="copy-btn-wrapper">
+      <button
+        className="copy-btn"
+        disabled={selected.length === 0}
+        onClick={handleCopy}
+      >
+        {copied ? 'Copied!' : 'Copy Calendar Link'}
+      </button>
+    </div>
   );
 }

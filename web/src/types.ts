@@ -6,12 +6,12 @@ export interface Location {
 
 export interface YogaEvent {
   uid: string;
-  summary: string;
+  title: string;
   description: string;
-  dtstart: Date;
-  dtend: Date;
+  startTime: Date;
+  endTime: Date;
   url?: string;
   locationAbbr: string;
   soldOut?: boolean;
-  capacityCheckedAt?: string;
+  lastModified?: string;
 }

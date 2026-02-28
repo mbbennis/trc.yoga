@@ -56,12 +56,12 @@ variable "aggregator_schedule" {
 
 variable "calendar_schedule" {
   description = "EventBridge schedule for the calendar Lambda"
-  default     = "cron(5,35 * * * ? *)"
+  default     = "cron(0 */12 * * ? *)"
 }
 
 variable "capacity_schedule" {
   description = "EventBridge schedule for the capacity Lambda"
-  default     = "cron(*/30 * * * ? *)"
+  default     = "cron(*/15 * * * ? *)"
 }
 
 variable "domain_name" {
@@ -85,7 +85,7 @@ resource "aws_dynamodb_table" "yoga_events" {
   name             = var.dynamodb_table_name
   billing_mode     = "PAY_PER_REQUEST"
   hash_key         = "uid"
-  range_key        = "dtstart"
+  range_key        = "startTime"
   stream_enabled   = false
 
   attribute {
@@ -94,7 +94,7 @@ resource "aws_dynamodb_table" "yoga_events" {
   }
 
   attribute {
-    name = "dtstart"
+    name = "startTime"
     type = "S"
   }
 
@@ -104,9 +104,9 @@ resource "aws_dynamodb_table" "yoga_events" {
   }
 
   global_secondary_index {
-    name            = "locationName-dtstart-index"
+    name            = "locationName-startTime-index"
     hash_key        = "locationName"
-    range_key       = "dtstart"
+    range_key       = "startTime"
     projection_type = "ALL"
   }
 
@@ -362,6 +362,10 @@ data "aws_iam_policy_document" "capacity_lambda_permissions" {
     resources = [aws_dynamodb_table.yoga_events.arn]
   }
   statement {
+    actions   = ["events:PutEvents"]
+    resources = ["*"]
+  }
+  statement {
     actions   = ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"]
     resources = ["arn:aws:logs:*:*:*"]
   }
@@ -415,6 +419,29 @@ resource "aws_lambda_permission" "eventbridge_capacity" {
   function_name = aws_lambda_function.yoga_capacity.function_name
   principal     = "events.amazonaws.com"
   source_arn    = aws_cloudwatch_event_rule.capacity_schedule.arn
+}
+
+# ---------- Capacity → Calendar EventBridge trigger ----------
+
+resource "aws_cloudwatch_event_rule" "capacity_changed" {
+  name = "trc-yoga-capacity-changed"
+  event_pattern = jsonencode({
+    source      = ["trc-yoga.capacity"]
+    detail-type = ["CapacityChanged"]
+  })
+}
+
+resource "aws_cloudwatch_event_target" "capacity_changed_calendar" {
+  rule = aws_cloudwatch_event_rule.capacity_changed.name
+  arn  = aws_lambda_function.yoga_calendar.arn
+}
+
+resource "aws_lambda_permission" "eventbridge_capacity_changed_calendar" {
+  statement_id  = "AllowCapacityChangedInvoke"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.yoga_calendar.function_name
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.capacity_changed.arn
 }
 
 # ---------- SQS Alarm (SNS + CloudWatch) ----------

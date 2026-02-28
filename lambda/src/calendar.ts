@@ -17,7 +17,7 @@ const ICAL_SOURCES: Record<string, { url: string; name: string }> = JSON.parse(p
 
 interface EventItem {
   uid: string;
-  dtstart: string;
+  startTime: string;
   location: string;
   locationName: string;
   rawVevent: string;
@@ -27,7 +27,7 @@ interface EventItem {
   improvedDescription?: string;
   description?: string;
   soldOut?: boolean;
-  capacityCheckedAt?: string;
+  lastModified?: string;
 }
 
 /**
@@ -121,7 +121,7 @@ export function buildIcalFile(vevents: string[], calendarName: string): string {
 function parseItem(item: Record<string, { S?: string; BOOL?: boolean }>): EventItem {
   return {
     uid: item.uid?.S ?? "",
-    dtstart: item.dtstart?.S ?? "",
+    startTime: item.startTime?.S ?? "",
     location: item.location?.S ?? "",
     locationName: item.locationName?.S ?? "",
     rawVevent: item.rawVevent?.S ?? "",
@@ -131,7 +131,7 @@ function parseItem(item: Record<string, { S?: string; BOOL?: boolean }>): EventI
     improvedDescription: item.improvedDescription?.S,
     description: item.description?.S,
     soldOut: item.soldOut?.BOOL,
-    capacityCheckedAt: item.capacityCheckedAt?.S,
+    lastModified: item.lastModified?.S,
   };
 }
 
@@ -142,13 +142,9 @@ export async function handler(): Promise<{ statusCode: number; body: string }> {
     return { statusCode: 400, body: "ICAL_SOURCES not configured" };
   }
 
-  // Cutoff: 30 days ago in the same format as dtstart (YYYYMMDD...)
+  // Cutoff: 30 days ago in ISO 8601 format
   const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-  const cutoffStr =
-    cutoff.getUTCFullYear().toString() +
-    String(cutoff.getUTCMonth() + 1).padStart(2, "0") +
-    String(cutoff.getUTCDate()).padStart(2, "0") +
-    "T000000";
+  const cutoffStr = cutoff.toISOString();
 
   console.log(`Querying events since ${cutoffStr} for ${abbrevs.length} locations`);
 
@@ -163,8 +159,8 @@ export async function handler(): Promise<{ statusCode: number; body: string }> {
       const result = await dynamo.send(
         new QueryCommand({
           TableName: DYNAMODB_TABLE,
-          IndexName: "locationName-dtstart-index",
-          KeyConditionExpression: "locationName = :name AND dtstart >= :cutoff",
+          IndexName: "locationName-startTime-index",
+          KeyConditionExpression: "locationName = :name AND startTime >= :cutoff",
           ExpressionAttributeValues: {
             ":name": { S: name },
             ":cutoff": { S: cutoffStr },
@@ -224,8 +220,8 @@ export async function handler(): Promise<{ statusCode: number; body: string }> {
         if (event.soldOut !== undefined) {
           vevent = replaceVeventField(vevent, "X-SOLD-OUT", event.soldOut ? "TRUE" : "FALSE");
         }
-        if (event.capacityCheckedAt) {
-          vevent = replaceVeventField(vevent, "X-CAPACITY-CHECKED-AT", event.capacityCheckedAt);
+        if (event.lastModified) {
+          vevent = replaceVeventField(vevent, "X-LAST-MODIFIED", event.lastModified);
         }
         const shortName = event.locationName.replace(/^Triangle Rock Club - /i, "");
         vevent = replaceVeventField(vevent, "CATEGORIES", shortName);

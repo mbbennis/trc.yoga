@@ -76,6 +76,12 @@ h1 {
 }
 
 /* Copy button */
+.copy-btn-wrapper {
+  margin-top: 8px;
+  padding-top: 16px;
+  border-top: 1px solid #ddd;
+}
+
 .copy-btn {
   width: 100%;
   padding: 10px;
@@ -86,7 +92,6 @@ h1 {
   font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
-  margin-bottom: 16px;
   transition: background-color 0.15s;
 }
 
