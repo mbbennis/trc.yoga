@@ -1,4 +1,4 @@
-import { extractVEvents, parseVEventField, computeContentHash } from "./ingest";
+import { extractVEvents, parseVEventField, computeContentHash, parseTitleInstructor } from "./ingest";
 
 // --------------- computeContentHash ---------------
 
@@ -27,6 +27,31 @@ describe("computeContentHash", () => {
     const a = computeContentHash("BEGIN:VEVENT\r\nSUMMARY:Yoga\r\nURL:https://example.com?random=abc123\r\nEND:VEVENT");
     const b = computeContentHash("BEGIN:VEVENT\r\nSUMMARY:Yoga\r\nURL:https://example.com?random=xyz789\r\nEND:VEVENT");
     expect(a).toBe(b);
+  });
+});
+
+// --------------- parseTitleInstructor ---------------
+
+describe("parseTitleInstructor", () => {
+  it("splits title and instructor on ' | '", () => {
+    expect(parseTitleInstructor("Vinyasa Flow | Jane Smith")).toEqual({
+      title: "Vinyasa Flow",
+      instructor: "Jane Smith",
+    });
+  });
+
+  it("returns empty instructor when no separator", () => {
+    expect(parseTitleInstructor("Vinyasa Flow")).toEqual({
+      title: "Vinyasa Flow",
+      instructor: "",
+    });
+  });
+
+  it("splits on last ' | ' only", () => {
+    expect(parseTitleInstructor("Power | Yoga | Jane")).toEqual({
+      title: "Power | Yoga",
+      instructor: "Jane",
+    });
   });
 });
 

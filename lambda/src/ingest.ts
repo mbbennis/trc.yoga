@@ -99,6 +99,16 @@ export function icalToIso(ical: string): string {
 }
 
 /**
+ * Parse a "Title | Instructor" summary into separate parts.
+ * If the summary doesn't contain " | ", instructor is empty.
+ */
+export function parseTitleInstructor(summary: string): { title: string; instructor: string } {
+  const sep = summary.lastIndexOf(" | ");
+  if (sep === -1) return { title: summary, instructor: "" };
+  return { title: summary.slice(0, sep), instructor: summary.slice(sep + 3) };
+}
+
+/**
  * Compute a SHA-256 hex digest of the raw VEVENT string for change detection.
  * Strips volatile fields that change on every fetch but don't represent
  * meaningful changes: DTSTAMP (server timestamp) and URL (contains a random
@@ -192,7 +202,9 @@ export async function handler(): Promise<{ statusCode: number; body: string }> {
         // Add optional fields if present
         const summaryVal = parseVEventField(vevent, "SUMMARY");
         if (summaryVal) {
-          messageBody.title = summaryVal;
+          const parsed = parseTitleInstructor(summaryVal);
+          messageBody.title = parsed.title;
+          messageBody.instructor = parsed.instructor;
         }
         const descVal = parseVEventField(vevent, "DESCRIPTION");
         if (descVal) {

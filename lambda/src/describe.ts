@@ -96,6 +96,7 @@ export async function handler(event: SQSEvent): Promise<SQSBatchResponse> {
       endTime?: string;
       title?: string;
       description?: string;
+      instructor?: string;
       contentHash?: string;
       location: string;
       locationName: string;
@@ -140,6 +141,7 @@ export async function handler(event: SQSEvent): Promise<SQSBatchResponse> {
 
       if (msg.endTime) item.endTime = { S: msg.endTime };
       if (msg.title) item.title = { S: msg.title };
+      if (msg.instructor !== undefined) item.instructor = { S: msg.instructor };
       if (msg.description) item.description = { S: msg.description };
       if (improvedDescription) item.improvedDescription = { S: improvedDescription };
       if (msg.contentHash) item.contentHash = { S: msg.contentHash };
