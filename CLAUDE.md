@@ -19,7 +19,6 @@ iCal feeds (RockGymPro) → Ingest Lambda → SQS → Describe Lambda → Dynamo
 - **Describe** (`lambda/src/describe.ts`): Consumes SQS messages, uses Bedrock Nova Micro to rewrite descriptions, classifies events as yoga/fitness (run club events are always fitness), writes to DynamoDB with contentHash and lastModified.
 - **Calendar** (`lambda/src/calendar.ts`): Queries DynamoDB, generates power-set .ics files under `calendars/yoga/` and `calendars/fitness/` in S3. Triggered by DynamoDB stream.
 - **Capacity** (`lambda/src/capacity.ts`): Queries upcoming events, scrapes RockGymPro for sold-out status, updates DynamoDB. Runs on schedule.
-- **Render** (`lambda/src/render.ts`): Queries DynamoDB, renders pre-built HTML pages via Eta templates, uploads to S3 at `v2/`. Triggered by same schedule as calendar + capacity-changed event.
 
 ## DynamoDB Table (`trc-yoga-events`)
 
@@ -43,8 +42,8 @@ iCal feeds (RockGymPro) → Ingest Lambda → SQS → Describe Lambda → Dynamo
 ## Build & Deploy
 
 - Lambda: `cd lambda && npm run package` then `cd terraform && terraform apply`
-- Web: `cd web && npm run build` then `aws s3 sync dist s3://trc.yoga --exclude "calendars/*" --exclude "v2/*"`
-- S3 deploy must use `--exclude "calendars/*" --exclude "v2/*"` to avoid deleting generated files
+- Web: `cd web && npm run build` then `aws s3 sync dist s3://trc.yoga --exclude "calendars/*"`
+- S3 deploy must use `--exclude "calendars/*"` to avoid deleting generated .ics files
 
 ## Content Hash
 

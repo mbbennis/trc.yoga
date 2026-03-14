@@ -4,7 +4,7 @@
   "description": "Lambda to aggregate yoga events from iCal feeds",
   "scripts": {
     "build": "tsc",
-    "package": "rm -rf dist && npm run build && mkdir -p dist/node_modules && cp -r node_modules/eta dist/node_modules/eta && cd dist && zip -r ../lambda.zip .",
+    "package": "rm -rf dist && npm run build && cd dist && zip -r ../lambda.zip .",
     "test": "jest"
   },
   "dependencies": {
@@ -12,8 +12,7 @@
     "@aws-sdk/client-dynamodb": "^3.600.0",
     "@aws-sdk/client-eventbridge": "^3.600.0",
     "@aws-sdk/client-s3": "^3.600.0",
-    "@aws-sdk/client-sqs": "^3.600.0",
-    "eta": "^3.5.0"
+    "@aws-sdk/client-sqs": "^3.600.0"
   },
   "devDependencies": {
     "@types/aws-lambda": "^8.10.140",
