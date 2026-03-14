@@ -444,6 +444,84 @@ resource "aws_lambda_permission" "eventbridge_capacity_changed_calendar" {
   source_arn    = aws_cloudwatch_event_rule.capacity_changed.arn
 }
 
+# ---------- Data Lambda IAM ----------
+
+data "aws_iam_policy_document" "data_lambda_permissions" {
+  statement {
+    actions   = ["dynamodb:Query"]
+    resources = [
+      aws_dynamodb_table.yoga_events.arn,
+      "${aws_dynamodb_table.yoga_events.arn}/index/*",
+    ]
+  }
+  statement {
+    actions   = ["s3:PutObject"]
+    resources = ["${module.website.bucket_arn}/data/*"]
+  }
+  statement {
+    actions   = ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"]
+    resources = ["arn:aws:logs:*:*:*"]
+  }
+}
+
+resource "aws_iam_role" "data_lambda" {
+  name               = "trc-yoga-data-lambda"
+  assume_role_policy = data.aws_iam_policy_document.lambda_assume.json
+}
+
+resource "aws_iam_role_policy" "data_lambda" {
+  role   = aws_iam_role.data_lambda.id
+  policy = data.aws_iam_policy_document.data_lambda_permissions.json
+}
+
+# ---------- Data Lambda ----------
+
+resource "aws_lambda_function" "yoga_data" {
+  function_name    = "trc-yoga-data"
+  role             = aws_iam_role.data_lambda.arn
+  handler          = "data.handler"
+  runtime          = "nodejs20.x"
+  timeout          = 60
+  memory_size      = 256
+  filename         = "${path.module}/../lambda/lambda.zip"
+  source_code_hash = filebase64sha256("${path.module}/../lambda/lambda.zip")
+
+  environment {
+    variables = {
+      DYNAMODB_TABLE = var.dynamodb_table_name
+      S3_BUCKET      = module.website.bucket_name
+      ICAL_SOURCES   = jsonencode(var.ical_sources)
+      LOOKAHEAD_DAYS = "15"
+    }
+  }
+}
+
+resource "aws_cloudwatch_event_target" "data" {
+  rule = aws_cloudwatch_event_rule.calendar_schedule.name
+  arn  = aws_lambda_function.yoga_data.arn
+}
+
+resource "aws_lambda_permission" "eventbridge_data" {
+  statement_id  = "AllowEventBridgeInvoke"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.yoga_data.function_name
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.calendar_schedule.arn
+}
+
+resource "aws_cloudwatch_event_target" "capacity_changed_data" {
+  rule = aws_cloudwatch_event_rule.capacity_changed.name
+  arn  = aws_lambda_function.yoga_data.arn
+}
+
+resource "aws_lambda_permission" "eventbridge_capacity_changed_data" {
+  statement_id  = "AllowCapacityChangedInvoke"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.yoga_data.function_name
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.capacity_changed.arn
+}
+
 # ---------- SQS Alarm (SNS + CloudWatch) ----------
 
 resource "aws_sns_topic" "yoga_alarms" {
@@ -546,6 +624,10 @@ output "calendar_website_url" {
 
 output "capacity_lambda_function_name" {
   value = aws_lambda_function.yoga_capacity.function_name
+}
+
+output "data_lambda_function_name" {
+  value = aws_lambda_function.yoga_data.function_name
 }
 
 output "sqs_queue_url" {
