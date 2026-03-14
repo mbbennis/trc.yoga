@@ -234,7 +234,7 @@ export function Schedule({ events, dataTimestamp }: { events: ClassEvent[]; data
   const dateGroups = Object.values(groupedByDate).sort((a, b) => a.date.localeCompare(b.date));
 
   return (
-    <div style={{ fontFamily: "'DM Sans','Helvetica Neue',sans-serif", background: "#FAF7F4", minHeight: "100vh" }}>
+    <div style={{ fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif", background: "#FAF7F4", minHeight: "100vh" }}>
 
       {/* Nav */}
       <div style={{
@@ -252,26 +252,9 @@ export function Schedule({ events, dataTimestamp }: { events: ClassEvent[]; data
         {/* Wordmark */}
         <div style={{ display: "flex", alignItems: "flex-start", gap: 10, justifyContent: "space-between" }}>
           <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
-            <svg width="32" height="32" viewBox="0 0 100 95" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ flexShrink: 0 }}>
-              {/* Far left dark face */}
-              <polygon points="44,4 4,78 28,72" fill="#1E2329" />
-              {/* Left main face */}
-              <polygon points="44,4 28,72 50,78" fill="#3D4450" />
-              {/* Centre highlight facet */}
-              <polygon points="44,4 58,32 52,62 38,54" fill="#5C6472" />
-              {/* Right main face */}
-              <polygon points="44,4 80,68 96,76 58,32" fill="#474E5C" />
-              {/* Far right shoulder */}
-              <polygon points="58,32 96,76 100,70 72,30" fill="#363C48" />
-              {/* Dark shadow crease left */}
-              <polygon points="44,4 36,40 28,72 35,68" fill="#252A32" />
-              {/* Green ground — rolling hills */}
-              <ellipse cx="30" cy="84" rx="32" ry="10" fill="#5A8C3C" />
-              <ellipse cx="72" cy="86" rx="30" ry="9" fill="#4E7A34" />
-              <ellipse cx="50" cy="88" rx="50" ry="9" fill="#5A8C3C" />
-            </svg>
+            <img src="/icon.svg" alt="" width={32} height={32} style={{ flexShrink: 0 }} />
             <div>
-              <div style={{ fontWeight: 700, fontSize: 18, color: "#2C2420", letterSpacing: "-0.3px" }}>TRC Yoga</div>
+              <div style={{ fontWeight: 700, fontSize: 26, color: "#2C2420", letterSpacing: "-0.4px" }}>TRC Yoga</div>
             </div>
           </div>
           <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "flex-end" : "center", gap: isMobile ? 4 : 10 }}>
