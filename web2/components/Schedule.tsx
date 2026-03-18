@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import type { ClassEvent } from "@/app/page";
+import styles from "./Schedule.module.css";
 
 // Muted earthy palette per location
 const LOCATION_COLORS: Record<string, { accent: string; light: string; dot: string }> = {
@@ -49,7 +50,8 @@ function formatDateHeader(dateStr: string, today: Date): { label: string; sub: s
   if (diff === -1) return { label: "Yesterday", sub: short, past: true };
   if (diff === 0)  return { label: "Today",     sub: short, past: false };
   if (diff === 1)  return { label: "Tomorrow",  sub: short, past: false };
-  return { label: full.split(",")[0], sub: short, past: false };
+  const weekday = full.split(",")[0];
+  return { label: diff >= 7 ? `Next ${weekday}` : weekday, sub: short, past: false };
 }
 
 function ExpandingSection({ open, children }: { open: boolean; children: React.ReactNode }) {
@@ -57,7 +59,7 @@ function ExpandingSection({ open, children }: { open: boolean; children: React.R
     <div style={{
       display: "grid",
       gridTemplateRows: open ? "1fr" : "0fr",
-      transition: "grid-template-rows 0.35s cubic-bezier(0.4,0,0.2,1)",
+      transition: "grid-template-rows 0.2s cubic-bezier(0.4,0,0.2,1)",
     }}>
       <div style={{ overflow: "hidden" }}>{children}</div>
     </div>
@@ -132,7 +134,7 @@ function ClassCard({ cls, isOpen, isPast, onToggle }: ClassCardProps) {
             stroke={isOpen ? color.accent : "#C4B8B2"}
             strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
             style={{
-              transition: "transform 0.3s cubic-bezier(0.4,0,0.2,1), stroke 0.2s",
+              transition: "transform 0.2s cubic-bezier(0.4,0,0.2,1), stroke 0.1s",
               transform: isOpen ? "rotate(180deg)" : "rotate(0deg)",
               flexShrink: 0,
             }}>
@@ -185,16 +187,7 @@ export function Schedule({ events, dataTimestamp }: { events: ClassEvent[]; data
   const [selectedLocations, setSelectedLocations] = useState(new Set<string>());
   const [viewType, setViewType] = useState("Yoga");
   const [openId, setOpenId] = useState<string | null>(null);
-  const [isMobile, setIsMobile] = useState(false);
   const [copied, setCopied] = useState(false);
-
-  // Sync isMobile after mount to avoid hydration mismatch
-  useEffect(() => {
-    setIsMobile(window.innerWidth < 768);
-    const handler = () => setIsMobile(window.innerWidth < 768);
-    window.addEventListener("resize", handler);
-    return () => window.removeEventListener("resize", handler);
-  }, []);
 
   const toggleOpen = (id: string) => setOpenId((prev) => (prev === id ? null : id));
   const toggleLocation = (loc: string) => setSelectedLocations((prev) => {
@@ -214,10 +207,13 @@ export function Schedule({ events, dataTimestamp }: { events: ClassEvent[]; data
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const todayStr = today.toLocaleDateString("en-CA"); // "YYYY-MM-DD"
+  const endDate = new Date(today);
+  endDate.setDate(today.getDate() + 13);
+  const endStr = endDate.toLocaleDateString("en-CA");
 
   const filtered = events.filter((c) => {
     if (c.category !== viewType.toLowerCase()) return false;
-    if (c.date < todayStr) return false;
+    if (c.date < todayStr || c.date > endStr) return false;
     return selectedLocations.size === 0 || selectedLocations.has(c.location);
   });
 
@@ -241,23 +237,16 @@ export function Schedule({ events, dataTimestamp }: { events: ClassEvent[]; data
         background: "#FAF7F4",
         borderBottom: "1px solid #EDE8E3",
       }}>
-        <div style={{
-          maxWidth: isMobile ? "100%" : 960,
-          margin: "0 auto",
-          padding: isMobile ? "20px 20px 0" : "28px 48px 0",
-          display: "flex",
-          flexDirection: "column",
-          gap: 4,
-        }}>
+        <div className={styles.navInner}>
         {/* Wordmark */}
         <div style={{ display: "flex", alignItems: "flex-start", gap: 10, justifyContent: "space-between" }}>
           <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
-            <img src="/icon.svg" alt="" width={32} height={32} style={{ flexShrink: 0 }} />
+            <img src="/android-chrome-192x192.png" alt="" width={32} height={32} style={{ flexShrink: 0 }} />
             <div>
               <div style={{ fontWeight: 700, fontSize: 26, color: "#2C2420", letterSpacing: "-0.4px" }}>TRC Yoga</div>
             </div>
           </div>
-          <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "flex-end" : "center", gap: isMobile ? 4 : 10 }}>
+          <div className={styles.wordmarkRight}>
             <div style={{ fontFamily: "Georgia, 'Times New Roman', serif", fontStyle: "italic", fontWeight: 400, fontSize: 11, color: "#B0A49E" }}>
               {formatSyncedLabel(dataTimestamp)}
             </div>
@@ -281,12 +270,7 @@ export function Schedule({ events, dataTimestamp }: { events: ClassEvent[]; data
         </div>
 
         {/* Tabs + filters row */}
-        <div style={{
-          display: "flex",
-          flexDirection: isMobile ? "column" : "row",
-          alignItems: isMobile ? "flex-start" : "center",
-          justifyContent: "space-between",
-        }}>
+        <div className={styles.tabsRow}>
           <div style={{ display: "flex" }}>
             {["Yoga", "Fitness"].map((t) => (
               <button key={t} onClick={() => setViewType(t)} style={{
@@ -303,12 +287,7 @@ export function Schedule({ events, dataTimestamp }: { events: ClassEvent[]; data
           </div>
 
           {/* Location filters */}
-          <div style={{
-            display: "flex", gap: 6, alignItems: "center",
-            overflowX: "auto", scrollbarWidth: "none",
-            padding: isMobile ? "10px 0 14px" : "0",
-            width: isMobile ? "100%" : "auto",
-          }}>
+          <div className={styles.locationFilters}>
             {LOCATIONS.map((loc) => {
               const color = LOCATION_COLORS[loc];
               const isActive = selectedLocations.has(loc);
@@ -333,11 +312,7 @@ export function Schedule({ events, dataTimestamp }: { events: ClassEvent[]; data
       </div>
 
       {/* Body */}
-      <div style={{
-        maxWidth: isMobile ? "100%" : 960,
-        margin: "0 auto",
-        padding: isMobile ? "24px 16px 80px" : "36px 48px 80px",
-      }}>
+      <div className={styles.body}>
 
         {/* Schedule */}
         {dateGroups.length === 0 ? (
@@ -360,6 +335,11 @@ export function Schedule({ events, dataTimestamp }: { events: ClassEvent[]; data
                   display: "flex", alignItems: "baseline", gap: 10,
                   marginBottom: 16, paddingBottom: 12,
                   borderBottom: "1px solid #EDE8E3",
+                  position: "sticky",
+                  top: 0,
+                  background: "#FAF7F4",
+                  zIndex: 5,
+                  paddingTop: 12,
                 }}>
                   <span style={{
                     fontSize: 18, fontWeight: 700,
