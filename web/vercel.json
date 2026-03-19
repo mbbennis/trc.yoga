@@ -1,0 +1,9 @@
+{
+  "rewrites": [
+    {
+      "source": "/:path*",
+      "destination": "http://data.trc.yoga.s3-website-us-east-1.amazonaws.com/:path*",
+      "has": [{ "type": "host", "value": "data.trc.yoga" }]
+    }
+  ]
+}

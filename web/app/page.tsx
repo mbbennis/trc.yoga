@@ -2,7 +2,7 @@ import { Schedule } from "@/components/Schedule";
 
 export const revalidate = 300; // ISR: revalidate every 5 minutes
 
-const DATA_URL = "https://trc.yoga/data/events.json";
+const DATA_URL = "https://data.trc.yoga/data/events.json";
 
 interface RawEvent {
   title: string | null;

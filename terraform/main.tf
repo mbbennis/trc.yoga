@@ -5,14 +5,6 @@ terraform {
       source  = "hashicorp/aws"
       version = ">= 6.27"
     }
-    cloudflare = {
-      source  = "cloudflare/cloudflare"
-      version = ">= 5.15"
-    }
-    random = {
-      source  = "hashicorp/random"
-      version = ">= 3.7"
-    }
   }
 }
 
@@ -25,8 +17,6 @@ provider "aws" {
     }
   }
 }
-
-provider "cloudflare" {}
 
 # ---------- Variables ----------
 
@@ -62,16 +52,6 @@ variable "calendar_schedule" {
 variable "capacity_schedule" {
   description = "EventBridge schedule for the capacity Lambda"
   default     = "cron(*/15 * * * ? *)"
-}
-
-variable "domain_name" {
-  description = "Domain name for the website"
-  default     = "trc.yoga"
-}
-
-variable "cloudflare_zone_id" {
-  description = "Cloudflare Zone ID for the domain"
-  type        = string
 }
 
 variable "alarm_email" {
@@ -247,15 +227,56 @@ resource "aws_lambda_event_source_mapping" "yoga_describe_sqs" {
   function_response_types            = ["ReportBatchItemFailures"]
 }
 
-# ---------- Website (S3 + Cloudflare) ----------
+# ---------- Website (S3) ----------
 
-module "website" {
-  source = "github.com/mbbennis/terraform-aws-s3-cloudflare-website"
+resource "aws_s3_bucket" "website" {
+  bucket = "data.trc.yoga"
+}
 
-  domain_name        = var.domain_name
-  bucket_name        = "trc.yoga"
-  cloudflare_zone_id = var.cloudflare_zone_id
-  error_object_key   = "index.html"
+resource "aws_s3_bucket_website_configuration" "website" {
+  bucket = aws_s3_bucket.website.id
+
+  index_document {
+    suffix = "index.html"
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "website" {
+  bucket = aws_s3_bucket.website.id
+
+  block_public_acls       = false
+  block_public_policy     = false
+  ignore_public_acls      = false
+  restrict_public_buckets = false
+}
+
+resource "aws_s3_bucket_policy" "website" {
+  bucket     = aws_s3_bucket.website.id
+  depends_on = [aws_s3_bucket_public_access_block.website]
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid       = "PublicRead"
+        Effect    = "Allow"
+        Principal = "*"
+        Action    = "s3:GetObject"
+        Resource  = "${aws_s3_bucket.website.arn}/*"
+      }
+    ]
+  })
+}
+
+resource "aws_s3_bucket_cors_configuration" "website" {
+  bucket = aws_s3_bucket.website.id
+
+  cors_rule {
+    allowed_headers = ["*"]
+    allowed_methods = ["GET"]
+    allowed_origins = ["https://trc.yoga", "https://data.trc.yoga", "https://*.vercel.app"]
+    max_age_seconds = 3600
+  }
 }
 
 # ---------- Calendar Lambda IAM ----------
@@ -270,7 +291,7 @@ data "aws_iam_policy_document" "calendar_lambda_permissions" {
   }
   statement {
     actions   = ["s3:PutObject"]
-    resources = ["${module.website.bucket_arn}/*"]
+    resources = ["${aws_s3_bucket.website.arn}/*"]
   }
   statement {
     actions   = ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"]
@@ -303,7 +324,7 @@ resource "aws_lambda_function" "yoga_calendar" {
   environment {
     variables = {
       DYNAMODB_TABLE = var.dynamodb_table_name
-      S3_BUCKET      = module.website.bucket_name
+      S3_BUCKET      = aws_s3_bucket.website.bucket
       ICAL_SOURCES   = jsonencode(var.ical_sources)
     }
   }
@@ -456,7 +477,7 @@ data "aws_iam_policy_document" "data_lambda_permissions" {
   }
   statement {
     actions   = ["s3:PutObject"]
-    resources = ["${module.website.bucket_arn}/data/*"]
+    resources = ["${aws_s3_bucket.website.arn}/data/*"]
   }
   statement {
     actions   = ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"]
@@ -489,7 +510,7 @@ resource "aws_lambda_function" "yoga_data" {
   environment {
     variables = {
       DYNAMODB_TABLE = var.dynamodb_table_name
-      S3_BUCKET      = module.website.bucket_name
+      S3_BUCKET      = aws_s3_bucket.website.bucket
       ICAL_SOURCES   = jsonencode(var.ical_sources)
       LOOKAHEAD_DAYS = "15"
     }
@@ -615,11 +636,16 @@ output "calendar_lambda_function_name" {
 }
 
 output "calendar_s3_bucket" {
-  value = module.website.bucket_name
+  value = aws_s3_bucket.website.bucket
 }
 
 output "calendar_website_url" {
-  value = "https://${var.domain_name}"
+  value = "https://trc.yoga"
+}
+
+output "s3_website_endpoint" {
+  value       = aws_s3_bucket_website_configuration.website.website_endpoint
+  description = "Point CNAME data.trc.yoga → this value"
 }
 
 output "capacity_lambda_function_name" {

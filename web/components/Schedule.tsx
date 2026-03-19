@@ -27,7 +27,7 @@ function buildIcalUrl(selectedLocations: Set<string>, viewType: string): string 
     selectedLocations.size === 0
       ? ["D", "MV", "NR", "SY"]
       : [...selectedLocations].map((l) => LOCATION_ABBREVS[l]).filter(Boolean).sort();
-  return `https://trc.yoga/calendars/${type}/${abbrevs.join("_")}.ics`;
+  return `https://data.trc.yoga/calendars/${type}/${abbrevs.join("_")}.ics`;
 }
 
 function formatSyncedLabel(timestamp: string): string {
