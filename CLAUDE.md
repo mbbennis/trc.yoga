@@ -9,30 +9,35 @@ iCal feeds (RockGymPro) → Ingest Lambda → SQS → Describe Lambda → Dynamo
                                                                       ↓
                                                             Calendar Lambda → S3 (.ics files)
                                                             Capacity Lambda → DynamoDB (sold-out status)
-                                                                      ↓
-                                                              Static website (S3 + CloudFront)
+                                                            Data Lambda → S3 (data/events.json) → Vercel ISR
 ```
 
 ## Lambdas
 
 - **Ingest** (`lambda/src/ingest.ts`): Fetches iCal feeds from 4 locations, computes content hash (stripping volatile DTSTAMP and URL fields), compares against DynamoDB, sends new/changed events to SQS. Runs daily via EventBridge.
 - **Describe** (`lambda/src/describe.ts`): Consumes SQS messages, uses Bedrock Nova Micro to rewrite descriptions, classifies events as yoga/fitness (run club events are always fitness), writes to DynamoDB with contentHash and lastModified.
-- **Calendar** (`lambda/src/calendar.ts`): Queries DynamoDB, generates power-set .ics files under `calendars/yoga/` and `calendars/fitness/` in S3. Triggered by DynamoDB stream.
-- **Capacity** (`lambda/src/capacity.ts`): Queries upcoming events, scrapes RockGymPro for sold-out status, updates DynamoDB. Runs on schedule.
+- **Calendar** (`lambda/src/calendar.ts`): Queries DynamoDB, generates power-set .ics files under `calendars/yoga/` and `calendars/fitness/` in S3. Runs every 12 hours and on capacity changes via EventBridge.
+- **Capacity** (`lambda/src/capacity.ts`): Queries upcoming events, scrapes RockGymPro for sold-out status, updates DynamoDB. Runs every 15 minutes via EventBridge. Emits `CapacityChanged` event when status changes.
+- **Data** (`lambda/src/data.ts`): Queries DynamoDB, writes `data/events.json` to S3, then POSTs to the Vercel `/api/revalidate` endpoint to trigger ISR. Runs every 12 hours and on capacity changes via EventBridge.
 
 ## DynamoDB Table (`trc-yoga-events`)
 
-- Primary key: `{uid, dtstart}` — used by ingest (GetItem), describe (PutItem), capacity (UpdateItem)
-- GSI: `{locationName, dtstart}` (`locationName-dtstart-index`) — used by calendar and capacity for range queries by location
+- Primary key: `{uid, startTime}` — used by ingest (GetItem), describe (PutItem), capacity (UpdateItem)
+- GSI: `{locationName, startTime}` (`locationName-startTime-index`) — used by calendar, capacity, and data for range queries by location
 - TTL on `ttl` attribute (1 year)
 
 ## Web App (`web/`)
 
-- React 19 + Vite, no router library
-- SPA navigation via `usePath` hook (pushState + popstate) — switching between `/` (yoga) and `/fitness` is instant
-- Fetches `.ics` files from S3, parses in-browser
-- Location filter persisted in cookie
-- Browser tab always shows "TRC Yoga"
+- Next.js 15 App Router, deployed on Vercel
+- Server-rendered with on-demand ISR — page rebuilds when the data lambda POSTs to `/api/revalidate`
+- Fetches `https://data.trc.yoga/data/events.json` at build time
+- `data.trc.yoga` is a Vercel domain that rewrites to the S3 bucket (HTTP), providing HTTPS termination
+- iCal subscription URLs served from `https://data.trc.yoga/calendars/`
+
+## S3 Bucket (`data.trc.yoga`)
+
+- Public read, hosted at `data.trc.yoga` via Vercel rewrite proxy
+- Contains `data/events.json` (written by data lambda) and `calendars/**/*.ics` (written by calendar lambda)
 
 ## Key Locations
 
@@ -41,9 +46,8 @@ iCal feeds (RockGymPro) → Ingest Lambda → SQS → Describe Lambda → Dynamo
 
 ## Build & Deploy
 
-- Lambda: `cd lambda && npm run package` then `cd terraform && terraform apply`
-- Web: `cd web && npm run build` then `aws s3 sync dist s3://trc.yoga --exclude "calendars/*"`
-- S3 deploy must use `--exclude "calendars/*"` to avoid deleting generated .ics files
+- Lambda + infra: `npm run deploy` (from project root) — builds lambda zip and runs `terraform apply`
+- Web: deployed automatically by Vercel on push to main
 
 ## Content Hash
 
