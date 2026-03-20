@@ -217,14 +217,6 @@ export async function handler(): Promise<{ statusCode: number; body: string }> {
         } else if (event.url) {
           vevent = replaceVeventField(vevent, "URL", event.url);
         }
-        if (event.soldOut !== undefined) {
-          vevent = replaceVeventField(vevent, "X-SOLD-OUT", event.soldOut ? "TRUE" : "FALSE");
-        }
-        if (event.lastModified) {
-          vevent = replaceVeventField(vevent, "X-LAST-MODIFIED", event.lastModified);
-        }
-        const shortName = event.locationName.replace(/^Triangle Rock Club - /i, "");
-        vevent = replaceVeventField(vevent, "CATEGORIES", shortName);
         return vevent;
       });
 
