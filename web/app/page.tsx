@@ -1,6 +1,6 @@
 import { Schedule } from "@/components/Schedule";
 
-export const revalidate = 300; // ISR: revalidate every 5 minutes
+export const revalidate = false;
 
 const DATA_URL = "https://data.trc.yoga/data/events.json";
 

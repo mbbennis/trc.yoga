@@ -59,6 +59,12 @@ variable "alarm_email" {
   type        = string
 }
 
+variable "revalidate_secret" {
+  description = "Shared secret for the Next.js /api/revalidate endpoint"
+  type        = string
+  sensitive   = true
+}
+
 # ---------- DynamoDB Table ----------
 
 resource "aws_dynamodb_table" "yoga_events" {
@@ -509,10 +515,12 @@ resource "aws_lambda_function" "yoga_data" {
 
   environment {
     variables = {
-      DYNAMODB_TABLE = var.dynamodb_table_name
-      S3_BUCKET      = aws_s3_bucket.website.bucket
-      ICAL_SOURCES   = jsonencode(var.ical_sources)
-      LOOKAHEAD_DAYS = "15"
+      DYNAMODB_TABLE   = var.dynamodb_table_name
+      S3_BUCKET        = aws_s3_bucket.website.bucket
+      ICAL_SOURCES     = jsonencode(var.ical_sources)
+      LOOKAHEAD_DAYS   = "15"
+      REVALIDATE_URL    = "https://trc.yoga/api/revalidate"
+      REVALIDATE_SECRET = var.revalidate_secret
     }
   }
 }

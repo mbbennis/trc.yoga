@@ -14,6 +14,8 @@ const DYNAMODB_TABLE = process.env.DYNAMODB_TABLE!;
 const S3_BUCKET = process.env.S3_BUCKET!;
 const ICAL_SOURCES: Record<string, { url: string; name: string }> = JSON.parse(process.env.ICAL_SOURCES ?? "{}");
 const LOOKAHEAD_DAYS = Number(process.env.LOOKAHEAD_DAYS ?? "15");
+const REVALIDATE_URL = process.env.REVALIDATE_URL;
+const REVALIDATE_SECRET = process.env.REVALIDATE_SECRET;
 
 interface EventRecord {
   title: string | null;
@@ -120,5 +122,14 @@ export async function handler(): Promise<{ statusCode: number; body: string }> {
 
   const summary = `Wrote data/events.json: ${yoga.length} yoga, ${fitness.length} fitness events`;
   console.log(summary);
+
+  if (REVALIDATE_URL && REVALIDATE_SECRET) {
+    const res = await fetch(REVALIDATE_URL, {
+      method: "POST",
+      headers: { "x-revalidate-secret": REVALIDATE_SECRET },
+    });
+    console.log(`Revalidate: ${res.status}`);
+  }
+
   return { statusCode: 200, body: summary };
 }
