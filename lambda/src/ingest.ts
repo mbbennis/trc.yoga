@@ -1,16 +1,15 @@
 /**
  * Ingest Lambda — fetches iCal feeds from configured sources, checks for
- * new/changed events via content hash, and sends them to SQS for enrichment.
+ * new/changed events via content hash, sends them to SQS for enrichment,
+ * and deletes DynamoDB records that no longer exist in the feed.
  */
 import { createHash } from "node:crypto";
-import { DynamoDBClient, GetItemCommand } from "@aws-sdk/client-dynamodb";
+import { DynamoDBClient, QueryCommand, DeleteItemCommand } from "@aws-sdk/client-dynamodb";
 import { SQSClient, SendMessageBatchCommand } from "@aws-sdk/client-sqs";
 
 const dynamo = new DynamoDBClient({});
 const sqs = new SQSClient({});
 
-// JSON map of location abbreviation → {url, name, address, siteUrl}
-const ICAL_SOURCES: Record<string, { url: string; name: string; address: string; siteUrl: string }> = JSON.parse(process.env.ICAL_SOURCES ?? "{}");
 const DYNAMODB_TABLE = process.env.DYNAMODB_TABLE!;
 const SQS_QUEUE_URL = process.env.SQS_QUEUE_URL!;
 
@@ -130,7 +129,53 @@ async function fetchIcal(url: string): Promise<string> {
   return res.text();
 }
 
+/**
+ * Query DynamoDB for all upcoming events at a location via the GSI.
+ * Returns a map of "uid#startTime" → { uid, startTime, rawVevent }.
+ */
+export async function queryUpcomingByLocation(
+  locationName: string,
+  nowStr: string
+): Promise<Map<string, { uid: string; startTime: string; rawVevent: string }>> {
+  const map = new Map<string, { uid: string; startTime: string; rawVevent: string }>();
+  let lastKey: Record<string, { S: string }> | undefined;
+
+  do {
+    const result = await dynamo.send(
+      new QueryCommand({
+        TableName: DYNAMODB_TABLE,
+        IndexName: "locationName-startTime-index",
+        KeyConditionExpression: "locationName = :name AND startTime >= :now",
+        ExpressionAttributeValues: {
+          ":name": { S: locationName },
+          ":now": { S: nowStr },
+        },
+        ProjectionExpression: "uid, startTime, rawVevent",
+        ExclusiveStartKey: lastKey,
+      })
+    );
+
+    for (const item of result.Items ?? []) {
+      const uid = item.uid?.S ?? "";
+      const startTime = item.startTime?.S ?? "";
+      const rawVevent = item.rawVevent?.S ?? "";
+      if (uid && startTime) {
+        map.set(`${uid}#${startTime}`, { uid, startTime, rawVevent });
+      }
+    }
+
+    lastKey = result.LastEvaluatedKey as Record<string, { S: string }> | undefined;
+  } while (lastKey);
+
+  return map;
+}
+
 export async function handler(): Promise<{ statusCode: number; body: string }> {
+  // Read at invocation time so env changes take effect without a cold start
+  const ICAL_SOURCES: Record<string, { url: string; name: string; address: string; siteUrl: string }> = JSON.parse(
+    process.env.ICAL_SOURCES ?? "{}"
+  );
+
   const abbrevs = Object.keys(ICAL_SOURCES);
   if (abbrevs.length === 0) {
     console.error("ICAL_SOURCES is empty — nothing to fetch");
@@ -139,11 +184,12 @@ export async function handler(): Promise<{ statusCode: number; body: string }> {
 
   console.log(`Fetching ${abbrevs.length} iCal source(s): ${abbrevs.join(", ")}`);
 
-  // Fetch all feeds and filter for yoga events per location
   const entries = Object.entries(ICAL_SOURCES);
   const results = await Promise.allSettled(entries.map(([, { url }]) => fetchIcal(url)));
 
+  const nowStr = new Date().toISOString();
   let totalSent = 0;
+  let totalDeleted = 0;
 
   for (let i = 0; i < results.length; i++) {
     const [abbrev, { url, name, address, siteUrl }] = entries[i];
@@ -157,41 +203,60 @@ export async function handler(): Promise<{ statusCode: number; body: string }> {
     const vevents = extractVEvents(result.value);
     console.log(`${abbrev}: ${vevents.length} events total`);
 
-    // Check each event against DynamoDB by content hash
-    const changedEvents: { vevent: string; contentHash: string; startTime: string }[] = [];
+    // Bulk query DynamoDB for all upcoming events at this location
+    const existingMap = await queryUpcomingByLocation(name, nowStr);
+    console.log(`${abbrev}: ${existingMap.size} upcoming events in DynamoDB`);
+
+    // Compare feed events against DynamoDB, track which keys are seen
+    const changedEvents: { vevent: string; startTime: string }[] = [];
+    const seenKeys = new Set<string>();
+
     for (const vevent of vevents) {
       const uid = parseVEventField(vevent, "UID");
       const dtstart = parseVEventField(vevent, "DTSTART");
       if (!uid || !dtstart) continue;
 
       const startTime = icalToIso(dtstart);
-      const contentHash = computeContentHash(vevent);
 
-      const existing = await dynamo.send(
-        new GetItemCommand({
-          TableName: DYNAMODB_TABLE,
-          Key: { uid: { S: uid }, startTime: { S: startTime } },
-          ProjectionExpression: "contentHash",
-        })
-      );
+      // Only manage upcoming events
+      if (startTime < nowStr) continue;
 
-      if (!existing.Item || existing.Item.contentHash?.S !== contentHash) {
-        changedEvents.push({ vevent, contentHash, startTime });
+      const key = `${uid}#${startTime}`;
+      seenKeys.add(key);
+
+      const incomingHash = computeContentHash(vevent);
+      const existing = existingMap.get(key);
+      const existingHash = existing?.rawVevent ? computeContentHash(existing.rawVevent) : null;
+
+      if (existingHash === null || incomingHash !== existingHash) {
+        changedEvents.push({ vevent, startTime });
       }
     }
 
-    console.log(`${abbrev}: ${changedEvents.length} new/changed events to send to SQS`);
+    // Delete ghost records (in DynamoDB but not in the feed)
+    const ghostKeys = [...existingMap.keys()].filter((k) => !seenKeys.has(k));
+    console.log(`${abbrev}: ${ghostKeys.length} ghost events to delete, ${changedEvents.length} new/changed events to send to SQS`);
 
-    // SendMessageBatch in chunks of 10
+    for (const key of ghostKeys) {
+      const { uid, startTime } = existingMap.get(key)!;
+      await dynamo.send(
+        new DeleteItemCommand({
+          TableName: DYNAMODB_TABLE,
+          Key: { uid: { S: uid }, startTime: { S: startTime } },
+        })
+      );
+      totalDeleted++;
+    }
+
+    // Send new/changed events to SQS in batches of 10
     for (let j = 0; j < changedEvents.length; j += 10) {
       const batch = changedEvents.slice(j, j + 10);
-      const entries = batch.map(({ vevent, contentHash, startTime }, idx) => {
+      const sqsEntries = batch.map(({ vevent, startTime }, idx) => {
         const uid = parseVEventField(vevent, "UID") ?? "unknown";
 
         const messageBody: Record<string, string> = {
           uid,
           startTime,
-          contentHash,
           location: abbrev,
           locationName: name,
           rawVevent: vevent,
@@ -199,7 +264,6 @@ export async function handler(): Promise<{ statusCode: number; body: string }> {
           url: siteUrl,
         };
 
-        // Add optional fields if present
         const summaryVal = parseVEventField(vevent, "SUMMARY");
         if (summaryVal) {
           const parsed = parseTitleInstructor(summaryVal);
@@ -210,7 +274,6 @@ export async function handler(): Promise<{ statusCode: number; body: string }> {
         if (descVal) {
           messageBody.description = descVal;
         }
-
         const dtend = parseVEventField(vevent, "DTEND");
         if (dtend) {
           messageBody.endTime = icalToIso(dtend);
@@ -225,18 +288,17 @@ export async function handler(): Promise<{ statusCode: number; body: string }> {
       await sqs.send(
         new SendMessageBatchCommand({
           QueueUrl: SQS_QUEUE_URL,
-          Entries: entries,
+          Entries: sqsEntries,
         })
       );
 
-      totalSent += entries.length;
+      totalSent += sqsEntries.length;
     }
   }
 
-  console.log(`Sent ${totalSent} events to SQS`);
-
+  console.log(`Sent ${totalSent} events to SQS, deleted ${totalDeleted} ghosts`);
   return {
     statusCode: 200,
-    body: `Sent ${totalSent} events to SQS`,
+    body: `Sent ${totalSent} events to SQS, deleted ${totalDeleted} ghosts`,
   };
 }

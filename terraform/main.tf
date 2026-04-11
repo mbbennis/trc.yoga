@@ -133,8 +133,11 @@ data "aws_iam_policy_document" "lambda_assume" {
 
 data "aws_iam_policy_document" "lambda_permissions" {
   statement {
-    actions   = ["dynamodb:GetItem"]
-    resources = [aws_dynamodb_table.yoga_events.arn]
+    actions   = ["dynamodb:Query", "dynamodb:DeleteItem"]
+    resources = [
+      aws_dynamodb_table.yoga_events.arn,
+      "${aws_dynamodb_table.yoga_events.arn}/index/locationName-startTime-index",
+    ]
   }
   statement {
     actions   = ["sqs:SendMessage", "sqs:SendMessageBatch"]
