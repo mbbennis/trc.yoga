@@ -74,7 +74,7 @@ export default async function Home() {
   let dataTimestamp = new Date().toISOString();
 
   try {
-    const res = await fetch(DATA_URL, { next: { revalidate } });
+    const res = await fetch(DATA_URL, { cache: "no-store" });
     if (res.ok) {
       const data: RawData = await res.json();
       dataTimestamp = data.timestamp;
