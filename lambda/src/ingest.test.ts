@@ -277,7 +277,7 @@ describe("queryUpcomingByLocation", () => {
 
 describe("handler", () => {
   it("skips unchanged events — no SQS send, no delete", async () => {
-    const vevent = makeVevent("uid-1", "20260420T110000Z", "Yoga Class");
+    const vevent = makeVevent("uid-1", "20260620T110000Z", "Yoga Class");
     const ical = `BEGIN:VCALENDAR\r\n${vevent}\r\nEND:VCALENDAR`;
 
     mockFetch.mockResolvedValueOnce({ ok: true, text: async () => ical });
@@ -285,7 +285,7 @@ describe("handler", () => {
       Items: [
         {
           uid: { S: "uid-1" },
-          startTime: { S: "2026-04-20T11:00:00.000Z" },
+          startTime: { S: "2026-06-20T11:00:00.000Z" },
           rawVevent: { S: vevent },
         },
       ],
@@ -301,8 +301,8 @@ describe("handler", () => {
   });
 
   it("sends changed events to SQS without contentHash field", async () => {
-    const oldVevent = makeVevent("uid-1", "20260420T110000Z", "Old Class");
-    const newVevent = makeVevent("uid-1", "20260420T110000Z", "New Class");
+    const oldVevent = makeVevent("uid-1", "20260620T110000Z", "Old Class");
+    const newVevent = makeVevent("uid-1", "20260620T110000Z", "New Class");
     const ical = `BEGIN:VCALENDAR\r\n${newVevent}\r\nEND:VCALENDAR`;
 
     mockFetch.mockResolvedValueOnce({ ok: true, text: async () => ical });
@@ -310,7 +310,7 @@ describe("handler", () => {
       Items: [
         {
           uid: { S: "uid-1" },
-          startTime: { S: "2026-04-20T11:00:00.000Z" },
+          startTime: { S: "2026-06-20T11:00:00.000Z" },
           rawVevent: { S: oldVevent },
         },
       ],
@@ -327,7 +327,7 @@ describe("handler", () => {
   });
 
   it("sends new events (not in DynamoDB) to SQS", async () => {
-    const vevent = makeVevent("uid-new", "20260420T110000Z");
+    const vevent = makeVevent("uid-new", "20260620T110000Z");
     const ical = `BEGIN:VCALENDAR\r\n${vevent}\r\nEND:VCALENDAR`;
 
     mockFetch.mockResolvedValueOnce({ ok: true, text: async () => ical });
@@ -341,16 +341,16 @@ describe("handler", () => {
   });
 
   it("deletes ghost events (in DynamoDB but not in feed)", async () => {
-    const vevent = makeVevent("uid-real", "20260420T110000Z");
-    const ghostVevent = makeVevent("uid-ghost", "20260421T110000Z");
+    const vevent = makeVevent("uid-real", "20260620T110000Z");
+    const ghostVevent = makeVevent("uid-ghost", "20260621T110000Z");
     const ical = `BEGIN:VCALENDAR\r\n${vevent}\r\nEND:VCALENDAR`;
 
     mockFetch.mockResolvedValueOnce({ ok: true, text: async () => ical });
     mockDynamoSend
       .mockResolvedValueOnce({
         Items: [
-          { uid: { S: "uid-real" }, startTime: { S: "2026-04-20T11:00:00.000Z" }, rawVevent: { S: vevent } },
-          { uid: { S: "uid-ghost" }, startTime: { S: "2026-04-21T11:00:00.000Z" }, rawVevent: { S: ghostVevent } },
+          { uid: { S: "uid-real" }, startTime: { S: "2026-06-20T11:00:00.000Z" }, rawVevent: { S: vevent } },
+          { uid: { S: "uid-ghost" }, startTime: { S: "2026-06-21T11:00:00.000Z" }, rawVevent: { S: ghostVevent } },
         ],
         LastEvaluatedKey: undefined,
       })
@@ -361,7 +361,7 @@ describe("handler", () => {
     expect(mockDynamoSend).toHaveBeenCalledTimes(2);
     const deleteCall = mockDynamoSend.mock.calls[1][0].input;
     expect(deleteCall.Key.uid.S).toBe("uid-ghost");
-    expect(deleteCall.Key.startTime.S).toBe("2026-04-21T11:00:00.000Z");
+    expect(deleteCall.Key.startTime.S).toBe("2026-06-21T11:00:00.000Z");
     expect(res.body).toContain("deleted 1");
   });
 
@@ -376,7 +376,7 @@ describe("handler", () => {
   });
 
   it("treats records with missing rawVevent as new and sends to SQS", async () => {
-    const vevent = makeVevent("uid-1", "20260420T110000Z");
+    const vevent = makeVevent("uid-1", "20260620T110000Z");
     const ical = `BEGIN:VCALENDAR\r\n${vevent}\r\nEND:VCALENDAR`;
 
     mockFetch.mockResolvedValueOnce({ ok: true, text: async () => ical });
@@ -384,7 +384,7 @@ describe("handler", () => {
       Items: [
         {
           uid: { S: "uid-1" },
-          startTime: { S: "2026-04-20T11:00:00.000Z" },
+          startTime: { S: "2026-06-20T11:00:00.000Z" },
           rawVevent: { S: "" },
         },
       ],
