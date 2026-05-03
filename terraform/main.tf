@@ -165,7 +165,7 @@ resource "aws_lambda_function" "yoga_ical" {
   function_name    = "trc-yoga-ingest"
   role             = aws_iam_role.lambda.arn
   handler          = "ingest.handler"
-  runtime          = "nodejs20.x"
+  runtime          = "nodejs22.x"
   timeout          = 60
   memory_size      = 256
   filename         = "${path.module}/../lambda/lambda.zip"
@@ -215,7 +215,7 @@ resource "aws_lambda_function" "yoga_describe" {
   function_name                  = "trc-yoga-describe"
   role                           = aws_iam_role.describe_lambda.arn
   handler                        = "describe.handler"
-  runtime                        = "nodejs20.x"
+  runtime                        = "nodejs22.x"
   timeout                        = 60
   memory_size                    = 256
   reserved_concurrent_executions = 5
@@ -324,7 +324,7 @@ resource "aws_lambda_function" "yoga_calendar" {
   function_name    = "trc-yoga-calendar"
   role             = aws_iam_role.calendar_lambda.arn
   handler          = "calendar.handler"
-  runtime          = "nodejs20.x"
+  runtime          = "nodejs22.x"
   timeout          = 60
   memory_size      = 256
   filename         = "${path.module}/../lambda/lambda.zip"
@@ -417,7 +417,7 @@ resource "aws_lambda_function" "yoga_capacity" {
   function_name                  = "trc-yoga-capacity"
   role                           = aws_iam_role.capacity_lambda.arn
   handler                        = "capacity.handler"
-  runtime                        = "nodejs20.x"
+  runtime                        = "nodejs22.x"
   timeout                        = 300
   memory_size                    = 256
   reserved_concurrent_executions = 1
@@ -510,7 +510,7 @@ resource "aws_lambda_function" "yoga_data" {
   function_name    = "trc-yoga-data"
   role             = aws_iam_role.data_lambda.arn
   handler          = "data.handler"
-  runtime          = "nodejs20.x"
+  runtime          = "nodejs22.x"
   timeout          = 60
   memory_size      = 256
   filename         = "${path.module}/../lambda/lambda.zip"
