@@ -4,7 +4,6 @@ Aggregates yoga and fitness class schedules from Triangle Rock Club locations (M
 
 Live at **[trc.yoga](https://trc.yoga)**
 
-
 ## Prerequisites
 
 - Node.js 20+

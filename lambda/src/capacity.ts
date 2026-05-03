@@ -242,9 +242,9 @@ export async function handler(): Promise<{ statusCode: number; body: string }> {
       if (!dateInfo) continue;
 
       const soldOutChanged = event.soldOut !== dateInfo.sold_out;
-      if (soldOutChanged) {
-        changedCount++;
-      }
+      if (!soldOutChanged) continue;
+
+      changedCount++;
 
       try {
         await dynamo.send(
@@ -290,7 +290,7 @@ export async function handler(): Promise<{ statusCode: number; body: string }> {
     }
   }
 
-  const summary = `Updated ${updatedCount} events (${changedCount} changed), ${errorCount} errors`;
+  const summary = `Checked ${allEvents.length} events, ${updatedCount} soldOut changes written, ${errorCount} errors`;
   console.log(summary);
   return { statusCode: 200, body: summary };
 }
