@@ -40,6 +40,7 @@ variable "ical_sources" {
     address = string
     siteUrl = string
   }))
+  sensitive = true
 }
 
 variable "dynamodb_table_name" {
@@ -65,6 +66,7 @@ variable "capacity_schedule" {
 variable "alarm_email" {
   description = "Email address for CloudWatch alarm notifications"
   type        = string
+  sensitive   = true
 }
 
 variable "revalidate_secret" {
